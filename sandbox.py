@@ -9,14 +9,25 @@ from botorch.fit import fit_gpytorch_mll
 from botorch.utils import standardize
 from gpytorch.mlls import ExactMarginalLogLikelihood
 
-# np.random.seed(42)
+np.random.seed(42)
 use_bo = False
-random_per_param_descent = True
+random_per_param_descent = False
 NUM_RANDOM_PARAMS = 1
 # number of steps in the optimization routine
-steps = 500
+steps = 1000000
 # purity of the target state
 purity = 0.66
+learning_rate = 0.001
+wandb.init(
+    project="quantum_optimization",
+    config={
+    "learning_rate": learning_rate,
+    "steps": steps,
+    "random_per_param_descent": random_per_param_descent,
+    "NUM_RANDOM_PARAMS": NUM_RANDOM_PARAMS,
+    "purity": purity,
+    }
+)
 
 # we generate a three-dimensional random vector by sampling
 # each entry from a standard normal distribution
@@ -76,7 +87,7 @@ def cost_fn(params):
 
 
 # set up the optimizer
-opt = torch.optim.SGD([params], lr=0.1)
+opt = torch.optim.SGD([params], lr=learning_rate)
 
 # the final stage of optimization isn't always the best, so we keep track of
 # the best parameters along the way
@@ -100,6 +111,11 @@ for n in range(steps):
     if loss < best_cost:
         best_cost = loss
         best_params = params
+
+    if random_per_param_descent == True:
+        wandb.log({"loss": loss, "grad_percent": n * NUM_RANDOM_PARAMS / params.flatten().size(0)})
+    else:
+        wandb.log({"loss": loss, "grad_percent": n})
 
     # Keep track of progress every 10 steps
     if n % 10 == 9 or n == steps - 1:
