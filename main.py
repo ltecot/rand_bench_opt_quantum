@@ -2,14 +2,35 @@ import pennylane as qml
 import numpy as np
 import torch
 from torch.autograd import Variable
-# np.random.seed(42)
+import wandb
+
+from botorch.models import SingleTaskGP
+from botorch.fit import fit_gpytorch_mll
+from botorch.utils import standardize
+from gpytorch.mlls import ExactMarginalLogLikelihood
+
+np.random.seed(42)
+use_bo = False
+random_per_param_descent = True
+greedy_param_descent = True  # Only does 1 param
+NUM_RANDOM_PARAMS = 1
+# number of steps in the optimization routine
+steps = 100000
+# purity of the target state
+purity = 0.66
+learning_rate = 0.001
+config={
+    "learning_rate": learning_rate,
+    "steps": steps,
+    "random_per_param_descent": random_per_param_descent,
+    "greedy_param_descent": greedy_param_descent,
+    "NUM_RANDOM_PARAMS": NUM_RANDOM_PARAMS,
+    "purity": purity,
+}
 
 # we generate a three-dimensional random vector by sampling
 # each entry from a standard normal distribution
 v = np.random.normal(0, 1, 3)
-
-# purity of the target state
-purity = 0.66
 
 # create a random Bloch vector with the specified purity
 bloch_v = Variable(
@@ -22,21 +43,6 @@ Paulis = Variable(torch.zeros([3, 2, 2], dtype=torch.complex128), requires_grad=
 Paulis[0] = torch.tensor([[0, 1], [1, 0]])
 Paulis[1] = torch.tensor([[0, -1j], [1j, 0]])
 Paulis[2] = torch.tensor([[1, 0], [0, -1]])
-
-##############################################################################
-# Unitary operations map pure states to pure states. So how can we prepare
-# mixed states using unitary circuits? The trick is to introduce
-# additional qubits and perform a unitary transformation on this larger
-# system. By "tracing out" the ancilla qubits, we can prepare mixed states
-# in the target register. In this example, we introduce two additional
-# qubits, which suffices to prepare arbitrary states.
-#
-# The ansatz circuit is composed of repeated layers, each of which
-# consists of single-qubit rotations along the :math:`x, y,` and :math:`z`
-# axes, followed by three CNOT gates entangling all qubits. Initial gate
-# parameters are chosen at random from a normal distribution. Importantly,
-# when declaring the layer function, we introduce an input parameter
-# :math:`j`, which allows us to later call each layer individually.
 
 # number of qubits in the circuit
 nr_qubits = 3
@@ -58,22 +64,7 @@ def layer(params, j):
     qml.CNOT(wires=[0, 2])
     qml.CNOT(wires=[1, 2])
 
-
-##############################################################################
-# Here, we use the ``default.qubit`` device to perform the optimization, but this can be changed to
-# any other supported device.
-
 dev = qml.device("default.qubit", wires=3)
-
-##############################################################################
-# When defining the QNode, we introduce as input a Hermitian operator
-# :math:`A` that specifies the expectation value being evaluated. This
-# choice later allows us to easily evaluate several expectation values
-# without having to define a new QNode each time.
-#
-# Since we will be optimizing using PyTorch, we configure the QNode
-# to use the PyTorch interface:
-
 
 @qml.qnode(dev, interface="torch")
 def circuit(params, A):
@@ -85,18 +76,6 @@ def circuit(params, A):
     # returns the expectation of the input matrix A on the first qubit
     return qml.expval(qml.Hermitian(A, wires=0))
 
-
-##############################################################################
-# Our goal is to prepare a state with the same Bloch vector as the target
-# state. Therefore, we define a simple cost function
-#
-# .. math::  C = \sum_{i=1}^3 \left|a_i-a'_i\right|,
-#
-# where :math:`\vec{a}=(a_1, a_2, a_3)` is the target vector and
-# :math:`\vec{a}'=(a'_1, a'_2, a'_3)` is the vector of the state prepared
-# by the circuit. Optimization is carried out using the Adam optimizer.
-# Finally, we compare the Bloch vectors of the target and output state.
-
 # cost function
 def cost_fn(params):
     cost = 0
@@ -107,10 +86,7 @@ def cost_fn(params):
 
 
 # set up the optimizer
-opt = torch.optim.Adam([params], lr=0.1)
-
-# number of steps in the optimization routine
-steps = 200
+opt = torch.optim.SGD([params], lr=learning_rate)
 
 # the final stage of optimization isn't always the best, so we keep track of
 # the best parameters along the way
@@ -120,16 +96,31 @@ best_params = np.zeros((nr_qubits, nr_layers, 3))
 print("Cost after 0 steps is {:.4f}".format(cost_fn(params)))
 
 # optimization begins
+wandb.init(project="quantum_optimization", config=config)
 for n in range(steps):
     opt.zero_grad()
     loss = cost_fn(params)
     loss.backward()
+    # print(params.grad.flatten())
+    if random_per_param_descent == True:
+        if greedy_param_descent:
+            max_id = torch.argmax(torch.abs(params.flatten()))  # Get max val index
+            idxs = torch.arange(params.flatten().size(0))
+            idxs = torch.cat([idxs[0:max_id], idxs[max_id+1:]])
+        else:
+            idxs = torch.randperm(params.flatten().size(0))  # Get random indicies
+        params.grad.flatten()[idxs[NUM_RANDOM_PARAMS:]] *= 0  # Set all grads after selected number to be zero
     opt.step()
 
     # keeps track of best parameters
     if loss < best_cost:
         best_cost = loss
         best_params = params
+
+    if random_per_param_descent == True:
+        wandb.log({"loss": loss, "grad_percent": n * NUM_RANDOM_PARAMS / params.flatten().size(0)})
+    else:
+        wandb.log({"loss": loss, "grad_percent": n})
 
     # Keep track of progress every 10 steps
     if n % 10 == 9 or n == steps - 1:
@@ -143,8 +134,3 @@ for l in range(3):
 # print results
 print("Target Bloch vector = ", bloch_v.numpy())
 print("Output Bloch vector = ", output_bloch_v)
-
-##############################################################################
-# About the author
-# ----------------
-# .. include:: ../_static/authors/juan_miguel_arrazola.txt
