@@ -9,84 +9,27 @@ from botorch.fit import fit_gpytorch_mll
 from botorch.utils import standardize
 from gpytorch.mlls import ExactMarginalLogLikelihood
 
-np.random.seed(42)
-use_bo = False
-random_per_param_descent = True
-greedy_param_descent = True  # Only does 1 param
-NUM_RANDOM_PARAMS = 1
-# number of steps in the optimization routine
-steps = 100000
-# purity of the target state
-purity = 0.66
-learning_rate = 0.001
-config={
-    "learning_rate": learning_rate,
-    "steps": steps,
-    "random_per_param_descent": random_per_param_descent,
-    "greedy_param_descent": greedy_param_descent,
-    "NUM_RANDOM_PARAMS": NUM_RANDOM_PARAMS,
-    "purity": purity,
-}
+parser = argparse.ArgumentParser(description='Optimize certified area')
+parser.add_argument('--dataset', type=str)  # According to datasets.py
+parser.add_argument('--optimizer', type=str)  # According to optimzers.py file
+parser.add_argument('--epochs', type=int, default=1000)
+parser.add_argument('--rand_seed', type=int, default=None)  # Pseudo-random if not given
+# Option-specific Arguments
+# Optimizers
+parser.add_argument('--learning_rate', type=float)
 
-# we generate a three-dimensional random vector by sampling
-# each entry from a standard normal distribution
-v = np.random.normal(0, 1, 3)
+args = parser.parse_args()
+np.random.seed(args.rand_seed)
+config = vars(args)
 
-# create a random Bloch vector with the specified purity
-bloch_v = Variable(
-    torch.tensor(np.sqrt(2 * purity - 1) * v / np.sqrt(np.sum(v ** 2))),
-    requires_grad=False
-)
+# Data
 
-# array of Pauli matrices (will be useful later)
-Paulis = Variable(torch.zeros([3, 2, 2], dtype=torch.complex128), requires_grad=False)
-Paulis[0] = torch.tensor([[0, 1], [1, 0]])
-Paulis[1] = torch.tensor([[0, -1j], [1j, 0]])
-Paulis[2] = torch.tensor([[1, 0], [0, -1]])
+# Model
 
-# number of qubits in the circuit
-nr_qubits = 3
-# number of layers in the circuit
-nr_layers = 2
-
-# randomly initialize parameters from a normal distribution
-params = np.random.normal(0, np.pi, (nr_qubits, nr_layers, 3))
-params = Variable(torch.tensor(params), requires_grad=True)
-
-# a layer of the circuit ansatz
-def layer(params, j):
-    for i in range(nr_qubits):
-        qml.RX(params[i, j, 0], wires=i)
-        qml.RY(params[i, j, 1], wires=i)
-        qml.RZ(params[i, j, 2], wires=i)
-
-    qml.CNOT(wires=[0, 1])
-    qml.CNOT(wires=[0, 2])
-    qml.CNOT(wires=[1, 2])
-
-dev = qml.device("default.qubit", wires=3)
-
-@qml.qnode(dev, interface="torch")
-def circuit(params, A):
-
-    # repeatedly apply each layer in the circuit
-    for j in range(nr_layers):
-        layer(params, j)
-
-    # returns the expectation of the input matrix A on the first qubit
-    return qml.expval(qml.Hermitian(A, wires=0))
-
-# cost function
-def cost_fn(params):
-    cost = 0
-    for k in range(3):
-        cost += torch.abs(circuit(params, Paulis[k]) - bloch_v[k])
-
-    return cost
-
-
-# set up the optimizer
+# Optimizer
 opt = torch.optim.SGD([params], lr=learning_rate)
+# Loss
+
 
 # the final stage of optimization isn't always the best, so we keep track of
 # the best parameters along the way
