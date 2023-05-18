@@ -1,8 +1,1 @@
-
-# cost function
-def cost_fn(params):
-    cost = 0
-    for k in range(3):
-        cost += torch.abs(circuit(params, Paulis[k]) - bloch_v[k])
-
-    return cost
+# File for loss functions. For now just using regular L2 and L1, add more later as needed.

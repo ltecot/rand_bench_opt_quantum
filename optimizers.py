@@ -1,0 +1,1 @@
+# File for optimizers. For now just doing SGD, add in more later
