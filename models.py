@@ -1,3 +1,41 @@
+# Models / quantum circuits
+# All must be based off the abstract class of torch.nn.Modules
+# https://pytorch.org/tutorials/beginner/examples_nn/polynomial_module.html
+
+import pennylane as qml
+import torch
+
+# TODO: Give more precise name
+class RandomizedCircuit(torch.nn.Module):
+    """Randomized circuit"""
+    def __init__(self, device):
+        """
+        Arguments:
+            num_layers (int): number of layers
+            num_qubits (int): number of qubits
+        """
+        super().__init__()
+        self.a = torch.nn.Parameter(torch.randn(()))
+        self.b = torch.nn.Parameter(torch.randn(()))
+        self.c = torch.nn.Parameter(torch.randn(()))
+        self.d = torch.nn.Parameter(torch.randn(()))
+        self.circuit = None
+
+    def circuit(self, x):
+        return x
+
+    def forward(self, x):
+        return self.circuit(x)
+
+# array of Pauli matrices (will be useful later)
+Paulis = Variable(torch.zeros([3, 2, 2], dtype=torch.complex128), requires_grad=False)
+Paulis[0] = torch.tensor([[0, 1], [1, 0]])
+Paulis[1] = torch.tensor([[0, -1j], [1j, 0]])
+Paulis[2] = torch.tensor([[1, 0], [0, -1]])
+
+# number of layers in the circuit
+nr_layers = 2
+
 # a layer of the circuit ansatz
 def layer(params, j):
     for i in range(nr_qubits):
