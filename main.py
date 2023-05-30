@@ -36,7 +36,9 @@ np.random.seed(args.rand_seed)
 dataset = qo_data.RandomMixedState()
 data_loader = dataset
 # Model
-model = qo_models.RandomEntanglment()
+dev = qml.device("default.qubit", wires=3)
+circuit = qo_models.RandomEntanglment()
+model = qml.QNode(circuit, dev)
 # Optimizer
 opt = torch.optim.SGD([circuit.params], lr=args.learning_rate)
 # Loss
