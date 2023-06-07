@@ -25,69 +25,39 @@ parser.add_argument('--num_qubits', type=int, default=5)
 # Dataset
 parser.add_argument('--data_size', type=float) # For random sampling problems. For now we define and generate all data before training.
 # Optimizers
-parser.add_argument('--epochs', type=int, default=1000) # For single-item datasets, this is the number of iterations
+# TODO: Account for problems that have datasets rather than specific problems.
+parser.add_argument('--steps', type=int, default=1000) 
 parser.add_argument('--learning_rate', type=float)
 
 args = parser.parse_args()
 np.random.seed(args.rand_seed)
 
 # TODO: Add extra options using if-statement with args as they are added
-# Data
-dataset = qo_data.RandomMixedState()
-data_loader = dataset
 # Model
 dev = qml.device("default.qubit", wires=3)
 circuit = qo_models.RandomEntanglment()
 model = qml.QNode(circuit, dev)
+# Loss
+cost_fn = torch.nn.MSELoss()
 # Optimizer
 opt = torch.optim.SGD([circuit.params], lr=args.learning_rate)
-# Loss
-# TODO: Some losses may need to modify the quantum circuit itself, so may need to pass that as an argument.
-cost_fn = torch.nn.MSELoss()
+# Problem
+dataset = qo_data.RandomMixedState()
 
 # optimization begins
 config = vars(args)
 wandb.init(project="quantum_optimization", config=config)  # Init wandDB logs, make sure you're logged into the right team
 # wandb.run.log_code(".")  # Uncomment if you want to save code. Git hash should be saved by default.
-for e in range(args.epochs):
-    for i, (data, target) in enumerate(data_loader):  # For now just one at a time, maybe add batching later
-        pred = model(data)
-        opt.zero_grad()
-        loss = cost_fn(pred, target)
-        loss.backward()
-        opt.step()
-        wandb_log = {"loss": loss,
-                     "epoch": e}
-        wandb.log(wandb_log)
-        # Keep track of progress every 10 steps
-        if (e * len(data_loader) + i) % args.print_interval == 0:
-            print(json.dumps(wandb_log, indent=4))
-    # TODO: Test eval. Right now we just do compilation but will need to add for future tasks.
-
-
-# Random legacy code, delete when clearly no longer needed for easy reference
-
-# print("Cost after {} steps is {:.4f}".format(n + 1, loss))
-
-# calculate the Bloch vector of the output state
-# output_bloch_v = np.zeros(3)
-# for l in range(3):
-#     output_bloch_v[l] = circuit(best_params, Paulis[l])
-
-# print results
-# print("Target Bloch vector = ", bloch_v.numpy())
-# print("Output Bloch vector = ", output_bloch_v)
-
-# if random_per_param_descent == True:
-#             if greedy_param_descent:
-#                 max_id = torch.argmax(torch.abs(params.flatten()))  # Get max val index
-#                 idxs = torch.arange(params.flatten().size(0))
-#                 idxs = torch.cat([idxs[0:max_id], idxs[max_id+1:]])
-#             else:
-#                 idxs = torch.randperm(params.flatten().size(0))  # Get random indicies
-#             params.grad.flatten()[idxs[NUM_RANDOM_PARAMS:]] *= 0  # Set all grads after selected number to be zero
-        
-# if random_per_param_descent == True:
-#         wandb.log({"loss": loss, "grad_percent": n * NUM_RANDOM_PARAMS / params.flatten().size(0)})
-#     else:
-#         wandb.log({"loss": loss, "grad_percent": n})
+for i in range(args.steps):
+    pred = model(data)
+    opt.zero_grad()
+    loss = cost_fn(pred, target)
+    loss.backward()
+    opt.step()
+    wandb_log = {"loss": loss,
+                 "step": i}
+    wandb.log(wandb_log)
+    # Keep track of progress every 10 steps
+    if (e * len(data_loader) + i) % args.print_interval == 0:
+        print(json.dumps(wandb_log, indent=4))
+# TODO: Test eval. Right now we just do compilation but will need to add for future tasks.

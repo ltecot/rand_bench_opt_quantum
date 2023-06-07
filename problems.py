@@ -1,19 +1,17 @@
-# Datasets for quantum optimization
-
-# TODO: Rethink this structure. Some "data" is like a hamiltonian rather than input-output pairs.
-# Maybe just make it a class that takes in a circuit + optimizer, then have an "step" function
-# Probably also make something for data with actual datasets with multiple inputs?
-# Maybe have step with a counter and some max_step thing to keep track.
-
-# All datasets must be based off the abstract class torch.utils.data.Dataset
-# https://pytorch.org/tutorials/beginner/data_loading_tutorial.html#dataset-class
+# Problems for quantum optimization
+# All problems must implement a step() function to optimize for the problem
+# All problems must implement an eval() function to evaluate performance without optimization.
+# Both functions should return a diagnostics dict. (IE with loss)
+# All needed objects (optimizer, loss, circuit, etc.) are passed in constructor.
+# Interface intentionally kept vague to account for flexibility in types of learning problems.
+# Useful link: setting initial states in quantum circuits
 # https://docs.pennylane.ai/en/stable/code/api/pennylane.QubitStateVector.html
 
 import torch
 from torch.utils.data import Dataset
 import numpy as np
 
-class RandomMixedState(Dataset):
+class RandomMixedState():
     """Dataset where we're going from the all-0 state to a random mixed state."""
 
     def __init__(self, num_qubits, purity):
@@ -31,8 +29,8 @@ class RandomMixedState(Dataset):
         )
         self.input = torch.zeros(num_qubits)
 
-    def __len__(self):
+    def step(self):
         return 1
 
-    def __getitem__(self, idx):
+    def eval(self, idx):
         return (self.input, self.target)

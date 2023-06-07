@@ -1,4 +1,6 @@
-# File for loss functions. For now just using regular L2 and L1, add more later as needed.
 # All losses must take in a 
 
-def 
+# L2 Loss for comparing two states
+# 
+def L2_state_loss():
+    raise Exception("Date provided can't be in the past")
