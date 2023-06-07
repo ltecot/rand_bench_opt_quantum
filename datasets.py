@@ -1,6 +1,13 @@
 # Datasets for quantum optimization
+
+# TODO: Rethink this structure. Some "data" is like a hamiltonian rather than input-output pairs.
+# Maybe just make it a class that takes in a circuit + optimizer, then have an "step" function
+# Probably also make something for data with actual datasets with multiple inputs?
+# Maybe have step with a counter and some max_step thing to keep track.
+
 # All datasets must be based off the abstract class torch.utils.data.Dataset
 # https://pytorch.org/tutorials/beginner/data_loading_tutorial.html#dataset-class
+# https://docs.pennylane.ai/en/stable/code/api/pennylane.QubitStateVector.html
 
 import torch
 from torch.utils.data import Dataset
