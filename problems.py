@@ -4,33 +4,34 @@
 # Both functions should return a diagnostics dict. (IE with loss)
 # All needed objects (optimizer, loss, circuit, etc.) are passed in constructor.
 # Interface intentionally kept vague to account for flexibility in types of learning problems.
-# Useful link: setting initial states in quantum circuits
-# https://docs.pennylane.ai/en/stable/code/api/pennylane.QubitStateVector.html
 
 import torch
 from torch.utils.data import Dataset
 import numpy as np
 
-class RandomMixedState():
-    """Dataset where we're going from the all-0 state to a random mixed state."""
+class RandomState():
+    """Problem where we're going from the default inital state to a random  state."""
 
-    def __init__(self, num_qubits, purity):
+    def __init__(self, qnode, loss_fn, optimizer, num_qubits):
         """
         Arguments:
             purity (float): Purity of the target state
         """
-        self.purity = purity
         self.num_qubits = num_qubits
-        v = np.random.normal(0, 1, num_qubits)  # random vector, sampled from normal dist
-        # create a random Bloch vector with the specified purity
-        self.target = torch.autograd.Variable(
-            torch.tensor(np.sqrt(2 * purity - 1) * v / np.sqrt(np.sum(v ** 2))),
-            requires_grad=False
-        )
-        self.input = torch.zeros(num_qubits)
+        v = torch.randn(2**num_qubits, dtype=torch.cfloat)
+        self.target = v / torch.sqrt(torch.sum(v ** 2))
+        self.opt = optimizer
+        self.qnode = qnode
+        self.loss_fn = loss_fn
 
     def step(self):
-        return 1
+        pred = self.qnode()
+        self.opt.zero_grad()
+        loss = self.loss_fn(pred, self.target)
+        loss.backward()
+        self.opt.step()
+        return {"loss": loss.item()}
 
     def eval(self, idx):
-        return (self.input, self.target)
+        pred = self.qnode()
+        return (pred, self.target, self.loss_fn(pred, self.target))
