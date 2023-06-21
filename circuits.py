@@ -8,15 +8,35 @@ import numpy as np
 # -------- MODULAR CIRCUITS CLASSES --------
 # Trainable quantum circuits, implemented in modular classes 
 # All classes must maintain a self.params list which contains all trainable parameters.
-# All classes must maintain a circuit() function which executes the qml circuit.
-# TODO: Maybe make modular between pytorch and numpy autograd?
-# TODO: Below modifier functions are annoying with passing in circuits. Change to natively implemented here.
-#       Basically just add some function that does an optional before and after param circuit modifier
-# TODO: Most pennylane functions take params as inputs. Not doing this might mess up numpy autograd.
-#       Probably will need to add params to args + kwargs, and just maintain classes as an easy way to 
-#       keep track of the trainable parameters + their dict config that you pass into the function.
+# All classes must take in optional state preperation + measurment circuits in the constructor
+# All classes must maintain a circuit(params, x, A) function which executes the qml circuit.
+# TODO: Make template class instead of these docs
 
-# note: https://docs.pennylane.ai/en/stable/code/api/pennylane.RandomLayers.html
+class RandomLayers():
+    """ Basically just implements qml.RandomLayers but in this interface
+        https://docs.pennylane.ai/en/stable/code/api/pennylane.RandomLayers.html """
+    
+    def __init__(self, num_qubits, num_layers, num_params, ratio_imprim, seed, state_circuit=None, measure_circuit=None):
+        """
+        Arguments:
+            num_qubits (int): number of qubits
+        """
+        self.num_qubits = num_qubits
+        self.num_layers = num_layers
+        self.num_params = num_params
+        self.ratio_imprim = ratio_imprim
+        self.seed = seed
+        # self.state_circuit = state_circuit
+        # self.measure_circuit = measure_circuit
+
+    def params_shape(self):
+        return (self.num_layers, self.num_params)
+
+    def circuit(self, params):
+        qml.RandomLayers(weights=params, wires=range(self.num_qubits), 
+                         ratio_imprim=self.ratio_imprim, seed=self.seed)
+        # return qml.state()
+
 class RandomizedCnotCircuit():
     """Circuit with universal single qubit gates followed by randomized cnots"""
     def __init__(self, num_qubits, num_layers):
@@ -43,10 +63,12 @@ class RandomizedCnotCircuit():
                 qml.CNOT(wires=pair)
         return qml.state()
 
+# TODO: Remove below, just have it be part of the problems.py classes
+#       Can keep some utility functions for special types of quantum loss that require extended circuits.
+
 # -------- RETURN MEASURMENT CIRCUIT FUNCTIONS --------
 # These circuit modifiers add on the final measurment of a system.
-# Takes in a circuit function as an input
-# TODO: Change this to a single string-function so it can be added to above classes.
+# Pass these into the constructor of the modular circuits above
 
 # def StateMeasurment(circuit):
 #     circuit()
@@ -54,7 +76,6 @@ class RandomizedCnotCircuit():
 
 # -------- STATE PREPARATION CIRCUIT FUNCTIONS --------
 # These circuit modifiers can be used to add state preparation operations.
-# Takes in a circuit function as an input
-# TODO: Change this to a single string-function so it can be added to above classes.
+# Pass these into the constructor of the modular circuits above
 
 # https://docs.pennylane.ai/en/stable/code/api/pennylane.QubitStateVector.html
