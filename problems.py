@@ -26,25 +26,28 @@ class RandomState():
         # self.model_circuit = model_circuit
         self.params = params
         self.opt = optimizer
-        v = torch.randn(2**num_qubits, dtype=torch.cfloat)
-        self.target = v / torch.sqrt(torch.sum(v.conj() * v))
+        v = torch.randn(2**args.num_qubits, dtype=torch.cfloat)
+        target = v / torch.sqrt(torch.sum(v.conj() * v))
+        self.target = target
 
         def full_circuit(params):
             model_circuit(params)
-            return qml.state()
+            # return qml.state()
+            pred = qml.state()
+            return qo_loss.L2_state_loss(pred, target)
         
         dev = qml.device("default.qubit", wires=args.num_qubits)
         self.qnode = qml.QNode(full_circuit, dev, interface=args.interface)
 
-    def _full_loss(self, params):
-        """Full end-to-end forward pass, taking params and maybe features as input.
-           We pass thing function into the optimizer"""
-        pred = self.qnode(params)
-        return qo_loss.L2_state_loss(pred, self.target)
+    # def _full_loss(self, params):
+    #     """Full end-to-end forward pass, taking params and maybe features as input.
+    #        We pass thing function into the optimizer"""
+    #     pred = self.qnode(params)
+    #     return qo_loss.L2_state_loss(pred, self.target)
 
     def step(self):
-        pred = self.qnode()
-        new_params, loss = self.opt.step_and_cost(self._full_loss, self.params)
+        # new_params, loss = self.opt.step_and_cost(self._full_loss, self.params)
+        new_params, loss = self.opt.step_and_cost(self.qnode, self.params)
         self.params = new_params
         # self.opt.zero_grad()
         # loss = self.loss_fn(pred, self.target)
@@ -54,7 +57,7 @@ class RandomState():
                 "loss_imag": loss.item().imag,}  # Should be zero but just for diagnostics
 
     def eval(self):
-        pred = self.qnode()
+        pred = self.qnode(self.params)
         return {"prediction": pred,
                 "target": self.target, 
-                "loss": self.loss_fn(pred, self.target)}
+                "loss": qo_loss.L2_state_loss(pred, self.target)}
