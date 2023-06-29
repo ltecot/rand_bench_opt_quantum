@@ -10,25 +10,25 @@ import torch
 import wandb
 
 import optimizers as qo_optim
-import loss as qo_loss
+import util as qo_util
 import problems as qo_problems
 import circuits as qo_circuits
 
 parser = argparse.ArgumentParser(description='Optimize certified area')
-parser.add_argument('--rand_seed', type=int, default=None)  # Pseudo-random if not given
+parser.add_argument('--rand_seed', type=int, default=42)  # Pseudo-random if not given
 parser.add_argument('--print_interval', type=int, default=50)  # Mostly just to see progress in terminal
 parser.add_argument('--num_qubits', type=int, default=3)  # Number of qubits
 parser.add_argument('--interface', type=str, default="torch")  # ML learning library to use
 parser.add_argument('--no_wandb', action=argparse.BooleanOptionalAction)  # To turn off wandb for debug
 # Problems
-parser.add_argument('--problem', type=str)  # Type of problem to run circuit + optimizer on.
+parser.add_argument('--problem', type=str, default="transverse_ising")  # Type of problem to run circuit + optimizer on.
 parser.add_argument('--loss', type=str)  # Type of loss. Are specific to each problem, see problems.py for each class' options.
 # Optimizers
 parser.add_argument('--optimizer', type=str, default="spsa")  # Type of optimizer
-parser.add_argument('--steps', type=int, default=10000) 
+parser.add_argument('--steps', type=int, default=1000) 
 parser.add_argument('--learning_rate', type=float, default=0.001)
 # Model Circuit
-parser.add_argument('--model', type=str, default="rand_layers") # Type of circuit "model" to use.
+parser.add_argument('--model', type=str, default="rand_cnot") # Type of circuit "model" to use.
 parser.add_argument('--num_layers', type=int, default=2) # For models that have layers, the number of them.
 parser.add_argument('--num_params', type=int, default=10) # Number of parameters in used model. If multiple layers, it's number per layer.
 parser.add_argument('--ratio_imprim', type=float, default=0.3) # For randomized models, # of 2-qubit gates divided by number of 1-qubit gates.
@@ -51,24 +51,23 @@ else:
     raise Exception("Need to give a valid model option")
 
 # INTERFACE / PARAMS
+# Some optimizers / problems are incompatible with some interfaces, so be careful when setting this.
 if args.interface == "torch":
     params = np.random.normal(0, np.pi, qmodel.params_shape())
     if args.optimizer == "spsa":
         params = torch.tensor(params, requires_grad=False)  # Some optimizers don't work with required grads
     else:
         params = torch.tensor(params, requires_grad=True)
+elif args.interface == "numpy":
+    params = np.random.normal(0, np.pi, qmodel.params_shape())
 else:
     raise Exception("Need to give a valid ML library interface option")
 
-# qnode = qml.QNode(qmodel.circuit, dev, interface=args.interface)
-# ------------------ Loss ------------------
-# TODO: Changing this to live in the problem's class instead.
-#       Having flexibility to make it modular is proving problematic.
-# loss_fn = qo_loss.L2_state_loss
 # ------------------ Optimizer ------------------
 
 if args.optimizer == "sgd":
-    opt = torch.optim.SGD([params], lr=args.learning_rate)
+    opt = qo_optim.PytorchSGD(params, args.learning_rate)
+    # opt = torch.optim.SGD([params], lr=args.learning_rate)
 elif args.optimizer == "spsa":
     opt = qml.SPSAOptimizer(maxiter=args.steps)
 else:
@@ -76,7 +75,13 @@ else:
 
 # ------------------ Problem ------------------
 
-q_problem = qo_problems.RandomState(qmodel.circuit, params, opt, args)
+if args.problem == "random_state":
+    q_problem = qo_problems.RandomState(qmodel.circuit, params, opt, args)
+elif args.problem == "transverse_ising":
+    q_problem = qo_problems.HamiltonianMinimization(qmodel.circuit, params, opt, 
+                                                    qo_util.transverse_ising_hamiltonian(args.num_qubits), args)
+else:
+    raise Exception("Need to give a valid problem option")
 
 # ------------------ Training ------------------
 
@@ -93,4 +98,5 @@ for i in range(args.steps):
     if i % args.print_interval == 0:
         # print(json.dumps(log, indent=4))
         print(log)
+        # print(params)
 print(q_problem.eval())
