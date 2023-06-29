@@ -15,7 +15,9 @@ import problems as qo_problems
 import circuits as qo_circuits
 
 parser = argparse.ArgumentParser(description='Optimize certified area')
-parser.add_argument('--rand_seed', type=int, default=42)  # Pseudo-random if not given
+parser.add_argument('--rand_seed', type=int, default=42)  # Global rand seed. Pseudo-random if not given
+parser.add_argument('--rand_seed_model', type=int, default=42)  # Seed for specifically model generation
+parser.add_argument('--rand_seed_problem', type=int, default=42)  # Seed for specifically problem generation
 parser.add_argument('--print_interval', type=int, default=50)  # Mostly just to see progress in terminal
 parser.add_argument('--num_qubits', type=int, default=3)  # Number of qubits
 parser.add_argument('--interface', type=str, default="torch")  # ML learning library to use
@@ -35,15 +37,14 @@ parser.add_argument('--ratio_imprim', type=float, default=0.3) # For randomized 
 
 args = parser.parse_args()
 np.random.seed(args.rand_seed)
-# TODO: Maybe change to optional seperate model + optimizer + problem seeds? For better controlled comparisons
 
 # ------------------ Model & Params ------------------
-# dev = qml.device("default.qubit", wires=args.num_qubits)
 
 # MODEL / CIRCUIT
 if args.model == "rand_cnot":
     qmodel = qo_circuits.RandomizedCnotCircuit(args.num_qubits, args.num_layers)
 elif args.model == "rand_layers":
+    np.random.seed(args.rand_seed_model)
     qmodel = qo_circuits.RandomLayers(args.num_qubits, args.num_layers, 
                                       args.num_params, args.ratio_imprim, 
                                       seed=np.random.randint(1e16))
@@ -58,7 +59,7 @@ if args.interface == "torch":
         params = torch.tensor(params, requires_grad=False)  # Some optimizers don't work with required grads
     else:
         params = torch.tensor(params, requires_grad=True)
-elif args.interface == "numpy":
+elif args.interface == "numpy":  # WARNING: All our code uses pytorch. Only use numpy for pennylane native optimizers and compatible problems.
     params = np.random.normal(0, np.pi, qmodel.params_shape())
 else:
     raise Exception("Need to give a valid ML library interface option")
@@ -67,7 +68,6 @@ else:
 
 if args.optimizer == "sgd":
     opt = qo_optim.PytorchSGD(params, args.learning_rate)
-    # opt = torch.optim.SGD([params], lr=args.learning_rate)
 elif args.optimizer == "spsa":
     opt = qml.SPSAOptimizer(maxiter=args.steps)
 else:
@@ -96,7 +96,5 @@ for i in range(args.steps):
     if not args.no_wandb: wandb.log(log)
     # Keep track of progress every few steps
     if i % args.print_interval == 0:
-        # print(json.dumps(log, indent=4))
         print(log)
-        # print(params)
 print(q_problem.eval())

@@ -34,7 +34,7 @@ class HamiltonianMinimization():
 
     def step(self):
         new_params, loss = self.opt.step_and_cost(self.qnode, self.params)
-        # print(type(new_params))
+        # print(new_params.size())
         self.params = new_params
         return {"loss": loss.item()}
 
@@ -56,6 +56,7 @@ class RandomState():
         self.params = params
         self.opt = optimizer
         if not target:
+            np.random.seed(args.rand_seed_problem)
             v = torch.randn(2**args.num_qubits, dtype=torch.cfloat)
             target = v / torch.sqrt(torch.sum(v.conj() * v))
         self.target = target
