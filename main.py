@@ -22,15 +22,21 @@ parser.add_argument('--print_interval', type=int, default=50)  # Mostly just to 
 parser.add_argument('--num_qubits', type=int, default=3)  # Number of qubits
 parser.add_argument('--interface', type=str, default="torch")  # ML learning library to use
 parser.add_argument('--no_wandb', action=argparse.BooleanOptionalAction)  # To turn off wandb for debug
-# Problems
+# ----------------- Problems -----------------
 parser.add_argument('--problem', type=str, default="transverse_ising")  # Type of problem to run circuit + optimizer on.
 parser.add_argument('--loss', type=str)  # Type of loss. Are specific to each problem, see problems.py for each class' options.
-# Optimizers
-parser.add_argument('--optimizer', type=str, default="spsa")  # Type of optimizer
-parser.add_argument('--steps', type=int, default=1000) 
-parser.add_argument('--learning_rate', type=float, default=0.001)
-# Model Circuit
-parser.add_argument('--model', type=str, default="rand_cnot") # Type of circuit "model" to use.
+# ----------------- Optimizers -----------------
+parser.add_argument('--optimizer', type=str, default="ges")  # Type of optimizer
+parser.add_argument('--steps', type=int, default=1000)  # Steps in the learning problem
+parser.add_argument('--learning_rate', type=float, default=1)  # Learning rate. Be careful cause this can be different scales for different optimizers.
+# Guided Evolutonary Strategies
+parser.add_argument('--explore_tradeoff', type=float, default=0.3)  # Percent to bias to indentity covariance. Alpha in GES.
+parser.add_argument('--grad_scale', type=float, default=1)  # Scale modifier of estimated gradients. Beta in GES.
+parser.add_argument('--variance', type=float, default=0.001)  # Variance of random sampled vectors.
+parser.add_argument('--grad_memory', type=int, default=10)  # Number of vectors to remember for biased sampling. k in GES.
+parser.add_argument('--est_shots', type=int, default=100)  # Number of rand vectors to use in estimating a gradient. P in GES.
+# ----------------- Model Circuit -----------------
+parser.add_argument('--model', type=str, default="full_cnot") # Type of circuit "model" to use.
 parser.add_argument('--num_layers', type=int, default=2) # For models that have layers, the number of them.
 parser.add_argument('--num_params', type=int, default=10) # Number of parameters in used model. If multiple layers, it's number per layer.
 parser.add_argument('--ratio_imprim', type=float, default=0.3) # For randomized models, # of 2-qubit gates divided by number of 1-qubit gates.
@@ -41,8 +47,8 @@ np.random.seed(args.rand_seed)
 # ------------------ Model & Params ------------------
 
 # MODEL / CIRCUIT
-if args.model == "rand_cnot":
-    qmodel = qo_circuits.RandomizedCnotCircuit(args.num_qubits, args.num_layers)
+if args.model == "full_cnot":
+    qmodel = qo_circuits.FullCnotCircuit(args.num_qubits, args.num_layers)
 elif args.model == "rand_layers":
     np.random.seed(args.rand_seed_model)
     qmodel = qo_circuits.RandomLayers(args.num_qubits, args.num_layers, 
@@ -55,10 +61,10 @@ else:
 # Some optimizers / problems are incompatible with some interfaces, so be careful when setting this.
 if args.interface == "torch":
     params = np.random.normal(0, np.pi, qmodel.params_shape())
-    if args.optimizer == "spsa":
-        params = torch.tensor(params, requires_grad=False)  # Some optimizers don't work with required grads
-    else:
-        params = torch.tensor(params, requires_grad=True)
+    # if args.optimizer == "spsa":
+    #     params = torch.tensor(params, requires_grad=False)  # Some optimizers don't work with required grads
+    # else:
+    params = torch.tensor(params, requires_grad=True)
 elif args.interface == "numpy":  # WARNING: All our code uses pytorch. Only use numpy for pennylane native optimizers and compatible problems.
     params = np.random.normal(0, np.pi, qmodel.params_shape())
 else:
@@ -68,7 +74,10 @@ else:
 
 if args.optimizer == "sgd":
     opt = qo_optim.PytorchSGD(params, args.learning_rate)
-elif args.optimizer == "spsa":
+elif args.optimizer == "ges":
+    opt = qo_optim.GES(torch.numel(params), args.learning_rate, args.explore_tradeoff, 
+                       args.grad_scale, args.variance, args.grad_memory, args.est_shots)
+elif args.optimizer == "pl_spsa":
     opt = qml.SPSAOptimizer(maxiter=args.steps)
 else:
     raise Exception("Need to give a valid optimizer option")

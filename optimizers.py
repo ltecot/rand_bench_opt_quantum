@@ -24,6 +24,8 @@ class GES():
         self.P = P
         self.U = torch.zeros(param_len, k)
         self.u_write_ind = 0  # So we can just keep track of the oldest gradient row to replace
+        if self.alpha < 0 or self.alpha > 1:
+            raise Exception("GES: Need to give valid alpha hyperparameter range.")
 
     def step_and_cost(self, objective_fn, params, *args, **kwargs):
         loss = objective_fn(params, *args, **kwargs)
@@ -34,12 +36,12 @@ class GES():
         covar = (self.alpha / self.n) * torch.eye(self.n) + ((1 - self.alpha) / self.k) * torch.mm(self.U, torch.t(self.U))
         mvg_dist = torch.distributions.multivariate_normal.MultivariateNormal(torch.zeros(self.n), covariance_matrix=self.variance * covar)
         grad_est = torch.zeros(self.n)
-        for i in self.P:
+        for i in range(self.P):
             eps = mvg_dist.sample()
             fp = objective_fn(params + torch.reshape(eps, params.shape), *args, **kwargs)
             fn = objective_fn(params - torch.reshape(eps, params.shape), *args, **kwargs)
             grad_est += eps * (fp - fn)
-        grad_est *= self.beta / (2 * self.variance * self.P)
+        grad_est *= self.beta / (2 * self.P)
         self.U[self.u_write_ind] = grad_est
         self.u_write_ind = (self.u_write_ind + 1) % self.k
         return self.params - self.lr * grad_est

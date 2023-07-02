@@ -12,7 +12,7 @@ import numpy as np
 # TODO: Make template class instead of these docs
 
 class RandomLayers():
-    """ Basically just implements qml.RandomLayers but in this interface
+    """ Basically just a wrapper, implements qml.RandomLayers but in this interface
         https://docs.pennylane.ai/en/stable/code/api/pennylane.RandomLayers.html """
     
     def __init__(self, num_qubits, num_layers, num_params, ratio_imprim, seed, state_circuit=None, measure_circuit=None):
@@ -34,8 +34,8 @@ class RandomLayers():
         qml.RandomLayers(weights=params, wires=range(self.num_qubits), 
                          ratio_imprim=self.ratio_imprim, seed=self.seed)
 
-class RandomizedCnotCircuit():
-    """Circuit with universal single qubit gates followed by randomized cnots"""
+class FullCnotCircuit():
+    """Circuit with universal single qubit gates followed by all possible combinations of cnots"""
     def __init__(self, num_qubits, num_layers):
         """
         Arguments:
@@ -44,7 +44,7 @@ class RandomizedCnotCircuit():
         """
         self.num_qubits = num_qubits
         self.num_layers = num_layers
-        # TODO: Add random sampling of these pairs
+        # TODO: Add random sampling of these pairs, for a different type of circuit class.
         self.cnot_pairs = itertools.combinations(range(self.num_qubits), 2)
 
     def params_shape(self):
