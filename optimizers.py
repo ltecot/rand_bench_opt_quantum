@@ -33,7 +33,10 @@ class GES():
         return new_params, loss
 
     def step(self, objective_fn, params, *args, **kwargs):
-        covar = (self.alpha / self.n) * torch.eye(self.n) + ((1 - self.alpha) / self.k) * torch.mm(self.U, torch.t(self.U))
+        if self.u_write_ind < self.k:
+            covar = torch.eye(self.n)  # To properly initalize U so we don't start out slower with first few steps.
+        else:
+            covar = (self.alpha) * torch.eye(self.n) + ((1 - self.alpha) / self.k) * torch.mm(self.U, torch.t(self.U)) # alpha / n for first identity?
         mvg_dist = torch.distributions.multivariate_normal.MultivariateNormal(torch.zeros(self.n), covariance_matrix=self.variance * covar)
         grad_est = torch.zeros(self.n)
         for i in range(self.P):
@@ -41,10 +44,10 @@ class GES():
             fp = objective_fn(params + torch.reshape(eps, params.shape), *args, **kwargs)
             fn = objective_fn(params - torch.reshape(eps, params.shape), *args, **kwargs)
             grad_est += eps * (fp - fn)
-        grad_est *= self.beta / (2 * self.P)
-        self.U[self.u_write_ind] = grad_est
-        self.u_write_ind = (self.u_write_ind + 1) % self.k
-        return self.params - self.lr * grad_est
+        grad_est *= self.beta / (2 * self.variance * self.P)
+        self.U[:, self.u_write_ind % self.k] = grad_est
+        self.u_write_ind += 1
+        return params - self.lr * torch.reshape(grad_est, params.shape)
 
 class PytorchSGD():
     """Interface for Pytorch implemented SGD"""
