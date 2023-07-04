@@ -18,7 +18,7 @@ parser = argparse.ArgumentParser(description='Optimize certified area')
 parser.add_argument('--rand_seed', type=int, default=42)  # Global rand seed. Pseudo-random if not given
 parser.add_argument('--rand_seed_model', type=int, default=42)  # Seed for specifically model generation
 parser.add_argument('--rand_seed_problem', type=int, default=42)  # Seed for specifically problem generation
-parser.add_argument('--print_interval', type=int, default=10)  # Mostly just to see progress in terminal
+parser.add_argument('--print_interval', type=int, default=1)  # Mostly just to see progress in terminal
 parser.add_argument('--num_qubits', type=int, default=3)  # Number of qubits
 parser.add_argument('--interface', type=str, default="torch")  # ML learning library to use
 parser.add_argument('--no_wandb', action=argparse.BooleanOptionalAction)  # To turn off wandb for debug
@@ -27,18 +27,18 @@ parser.add_argument('--problem', type=str, default="transverse_ising")  # Type o
 parser.add_argument('--loss', type=str)  # Type of loss. Are specific to each problem, see problems.py for each class' options.
 # ----------------- Optimizers -----------------
 parser.add_argument('--optimizer', type=str, default="ges")  # Type of optimizer
-parser.add_argument('--steps', type=int, default=3000)  # Steps in the learning problem
-parser.add_argument('--learning_rate', type=float, default=0.001)  # Learning rate. Be careful cause this can be different scales for different optimizers.
+parser.add_argument('--steps', type=int, default=500)  # Steps in the learning problem
+parser.add_argument('--learning_rate', type=float, default=1e-1)  # Learning rate. Be careful cause this can be different scales for different optimizers.
 # Guided Evolutonary Strategies
 parser.add_argument('--explore_tradeoff', type=float, default=0.5)  # Percent to bias to indentity covariance. Alpha in GES.
 parser.add_argument('--grad_scale', type=float, default=1)  # Scale modifier of estimated gradients. Beta in GES.
-parser.add_argument('--variance', type=float, default=0.001)  # Variance of random sampled vectors.
+parser.add_argument('--variance', type=float, default=1e-1)  # Variance of random sampled vectors.
 parser.add_argument('--grad_memory', type=int, default=10)  # Number of vectors to remember for biased sampling. k in GES.
 parser.add_argument('--est_shots', type=int, default=10)  # Number of rand vectors to use in estimating a gradient. P in GES.
 # ----------------- Model Circuit -----------------
 parser.add_argument('--model', type=str, default="full_cnot") # Type of circuit "model" to use.
 parser.add_argument('--num_layers', type=int, default=2) # For models that have layers, the number of them.
-parser.add_argument('--num_params', type=int, default=10) # Number of parameters in used model. If multiple layers, it's number per layer.
+parser.add_argument('--num_params', type=int, default=10) # Number of parameters in used model, if it is changeable. If multiple layers, it's number per layer.
 parser.add_argument('--ratio_imprim', type=float, default=0.3) # For randomized models, # of 2-qubit gates divided by number of 1-qubit gates.
 
 args = parser.parse_args()
