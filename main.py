@@ -22,20 +22,22 @@ parser.add_argument('--print_interval', type=int, default=1)  # Mostly just to s
 parser.add_argument('--num_qubits', type=int, default=3)  # Number of qubits
 parser.add_argument('--interface', type=str, default="torch")  # ML learning library to use
 parser.add_argument('--no_wandb', action=argparse.BooleanOptionalAction)  # To turn off wandb for debug
-# ----------------- Problems -----------------
+# ------------------------------------- Problems -------------------------------------
 parser.add_argument('--problem', type=str, default="transverse_ising")  # Type of problem to run circuit + optimizer on.
 parser.add_argument('--loss', type=str)  # Type of loss. Are specific to each problem, see problems.py for each class' options.
-# ----------------- Optimizers -----------------
+# ------------------------------------- Optimizers -------------------------------------
 parser.add_argument('--optimizer', type=str, default="spsa")  # Type of optimizer
 parser.add_argument('--steps', type=int, default=500)  # Steps in the learning problem
 parser.add_argument('--learning_rate', type=float, default=1e-1)  # Learning rate. Be careful cause this can be different scales for different optimizers.
+parser.add_argument('--est_shots', type=int, default=1)  # Number of rand vectors to use in estimating a gradient / doing an update step
+parser.add_argument('--stddev', type=float, default=1e-1)  # Standard deviation of random sampled vectors.
 # Guided Evolutonary Strategies
 parser.add_argument('--explore_tradeoff', type=float, default=0.5)  # Percent to bias to indentity covariance. Alpha in GES.
 parser.add_argument('--grad_scale', type=float, default=1)  # Scale modifier of estimated gradients. Beta in GES.
-parser.add_argument('--variance', type=float, default=1e-1)  # Variance of random sampled vectors.
 parser.add_argument('--grad_memory', type=int, default=10)  # Number of vectors to remember for biased sampling. k in GES.
-parser.add_argument('--est_shots', type=int, default=1)  # Number of rand vectors to use in estimating a gradient. P in GES.
-# ----------------- Model Circuit -----------------
+# QNSPSA
+parser.add_argument('--metric_reg', type=float, default=0.001)  # Percent of identity to add to 2nd order metric so it's positive definite.
+# ------------------------------------- Model Circuit -------------------------------------
 parser.add_argument('--model', type=str, default="full_cnot") # Type of circuit "model" to use.
 parser.add_argument('--num_layers', type=int, default=2) # For models that have layers, the number of them.
 parser.add_argument('--num_params', type=int, default=10) # Number of parameters in used model, if it is changeable. If multiple layers, it's number per layer.
@@ -77,11 +79,19 @@ if args.optimizer == "sgd":
     opt = qo_optim.PytorchSGD(params, args.learning_rate)
 elif args.optimizer == "ges":
     opt = qo_optim.GES(torch.numel(params), args.learning_rate, args.explore_tradeoff, 
-                       args.grad_scale, args.variance, args.grad_memory, args.est_shots)
+                       args.grad_scale, args.stddev ** 2, args.grad_memory, args.est_shots)
+elif args.optimizer == "xnes":
+    opt = qo_optim.xNES(param_len=torch.numel(params), stddev_init=args.stddev, num_shots=args.est_shots, nu_sigma=None, nu_b=None, nu_mu=1)
 elif args.optimizer == "spsa":
-    opt = qo_optim.SPSA(param_len=torch.numel(params), maxiter=args.steps)
+    opt = qo_optim.SPSA(param_len=torch.numel(params), maxiter=args.steps, num_shots=args.est_shots, 
+                        alpha=0.602, c=0.2, gamma=0.101, A=None, a=None)
 elif args.optimizer == "pl_spsa":
-    opt = qml.SPSAOptimizer(maxiter=args.steps)
+    # maxiter=None, alpha=0.602, gamma=0.101, c=0.2, A=None, a=None
+    opt = qml.SPSAOptimizer(maxiter=args.steps, alpha=0.602, gamma=0.101, c=0.2, A=None, a=None)
+elif args.optimizer == "pl_qnspsa":
+    # stepsize=0.001, regularization=0.001, finite_diff_step=0.01, resamplings=1, blocking=True, history_length=5, seed=None
+    opt = qml.QNSPSAOptimizer(stepsize=args.learning_rate, regularization=args.metric_reg, finite_diff_step=args.stddev, 
+                              resamplings=args.est_shots, blocking=True, history_length=5, seed=None)
 else:
     raise Exception("Need to give a valid optimizer option")
 
