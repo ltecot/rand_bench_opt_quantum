@@ -3,6 +3,12 @@
 import torch
 import pennylane as qml
 
+# Hamiltonian for ising model (no external field)
+def ising_hamiltonian(num_qubits):
+    z_coeffs = [-1. for i in range(num_qubits)]
+    z_obs = [qml.PauliZ(i) @ qml.PauliZ((i+1) % num_qubits) for i in range(num_qubits)]
+    return qml.Hamiltonian(z_coeffs, z_obs)
+
 # Hamiltonian for transverse ising model
 def transverse_ising_hamiltonian(num_qubits, h=0.5):
     z_coeffs = [-1. for i in range(num_qubits)]

@@ -6,7 +6,12 @@
 import torch
 import numpy as np
 import pennylane as qml
+import math
 from copy import copy
+
+# TODO: 2-SPSA (hessians)
+# TODO: AdamSPSA
+# TODO: sNES
 
 class SPSA_2():
     """2nd order SPSA SPSA
@@ -132,7 +137,7 @@ class xNES():
             arg (type): description
             TODO
         """
-        if num_shots < 2:
+        if num_shots and num_shots < 2:
             raise Exception("xNES: Need 2 or more shots per update step")
         self.n = param_len
         self.stddev = stddev_init
@@ -142,15 +147,15 @@ class xNES():
         self.nu_b = nu_b
         self.nu_mu = nu_mu
         if not nu_sigma:
-            self.nu_sigma = (9 + 3 * np.log(param_len)) / (5 * (param_len ** 1.5))
+            self.nu_sigma = (9 + 3 * math.log(param_len)) / (5 * (param_len ** 1.5))
         if not nu_b:
-            self.nu_b = (9 + 3 * np.log(param_len)) / (5 * (param_len ** 1.5))
+            self.nu_b = (9 + 3 * math.log(param_len)) / (5 * (param_len ** 1.5))
         if not num_shots:
-            self.num_shots = 4 + np.floor(3 * np.log(param_len))
+            self.num_shots = 4 + math.floor(3 * math.log(param_len))
 
     def _utilities(self, fitness):
         ordering = torch.argsort(fitness) + 1
-        utilities = torch.log((self.num_shots / 2) + 1) - torch.log(ordering)
+        utilities = math.log((self.num_shots / 2) + 1) - torch.log(ordering)
         utilities[utilities < 0] = 0
         utilities = utilities / torch.sum(utilities)
         utilities = utilities - (1 / self.num_shots)
@@ -179,7 +184,8 @@ class xNES():
         d_B = d_M - (d_stddev * torch.eye(self.n))
         new_params = params + torch.reshape(self.nu_mu * self.stddev * torch.mv(self.B, d_delta), params.shape)
         self.stddev = self.stddev * torch.exp(self.nu_sigma / 2 * d_stddev)
-        self.B = torch.mm(self.B, torch.matrix_exp(self.nu_B / 2 * d_B))
+        self.B = torch.mm(self.B, torch.matrix_exp(self.nu_b / 2 * d_B))
+        # print(new_params)
         return new_params
 
 class GES():
@@ -240,7 +246,7 @@ class PytorchSGD():
 
     def step_and_cost(self, objective_fn, params, *args, **kwargs):
         self.opt.zero_grad()
-        loss = objective_fn(*args, **kwargs)
+        loss = objective_fn(params, *args, **kwargs)
         loss.backward()
         self.opt.step()
         return self.params, loss
