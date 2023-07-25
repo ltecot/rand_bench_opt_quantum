@@ -128,6 +128,7 @@ class SPSA():
         new_params = self.step(objective_fn, params, *args, **kwargs)
         return new_params, loss
 
+# TODO: Probably add option to prevent steps that significantly increase historical loss
 class xNES():
     """Exponential natural evolution strategies"""
 
@@ -186,6 +187,59 @@ class xNES():
         self.stddev = self.stddev * torch.exp(self.nu_sigma / 2 * d_stddev)
         self.B = torch.mm(self.B, torch.matrix_exp(self.nu_b / 2 * d_B))
         # print(new_params)
+        return new_params
+
+class sNES():
+    """Seperable exponential natural evolution strategies"""
+
+    def __init__(self, param_len, stddev_init=1, num_shots=2, nu_mu=1, nu_sigma=None):
+        """
+        Arguments:
+            arg (type): description
+            TODO
+        """
+        if num_shots and num_shots < 2:
+            raise Exception("xNES: Need 2 or more shots per update step")
+        self.n = param_len
+        # self.stddev = stddev_init
+        self.sigma = torch.ones(param_len) * stddev_init
+        self.num_shots = num_shots
+        self.nu_sigma = nu_sigma
+        self.nu_mu = nu_mu
+        if not nu_sigma:
+            self.nu_sigma = (9 + 3 * math.log(param_len)) / (5 * (param_len ** 0.5))
+        if not num_shots:
+            self.num_shots = 4 + math.floor(3 * math.log(param_len))
+
+    def _utilities(self, fitness):
+        ordering = torch.argsort(fitness) + 1
+        utilities = math.log((self.num_shots / 2) + 1) - torch.log(ordering)
+        utilities[utilities < 0] = 0
+        utilities = utilities / torch.sum(utilities)
+        utilities = utilities - (1 / self.num_shots)
+        return utilities
+
+    def step_and_cost(self, objective_fn, params, *args, **kwargs):
+        loss = objective_fn(params, *args, **kwargs)
+        new_params = self.step(objective_fn, params, *args, **kwargs)
+        return new_params, loss
+
+    def step(self, objective_fn, params, *args, **kwargs):
+        fitnesses = torch.zeros(self.num_shots)
+        sk_list = []
+        for i in range(self.num_shots):
+            sk = torch.normal(mean=torch.zeros(self.n), std=1.0)
+            zk = params + torch.reshape(self.sigma * sk, params.shape)
+            fitnesses[i] = objective_fn(params + torch.reshape(zk, params.shape), *args, **kwargs)
+            sk_list.append(sk)
+        utilities = self._utilities(fitnesses)
+        d_mu = torch.zeros(self.n)
+        d_sigma = torch.zeros(self.n)
+        for i in range(self.num_shots):
+            d_mu += utilities[i] * sk_list[i]
+            d_sigma += utilities[i] * (sk_list[i] ** 2 - 1)
+        new_params = params + torch.reshape(self.nu_mu * self.sigma * d_mu, params.shape)
+        self.sigma = self.sigma * torch.exp(self.nu_sigma / 2 * d_sigma)
         return new_params
 
 class GES():

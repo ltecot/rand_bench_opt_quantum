@@ -66,9 +66,9 @@ def main(args=None):
     
     np.random.seed(args.rand_seed)
     if not args.rand_seed_model:
-        args.rand_seed_model = np.random.randint(1e16)
+        args.rand_seed_model = np.random.randint(1e8)
     if not args.rand_seed_problem:
-        args.rand_seed_problem = np.random.randint(1e16)
+        args.rand_seed_problem = np.random.randint(1e8)
 
     # ------------------ Model & Params ------------------
 
@@ -77,9 +77,10 @@ def main(args=None):
         qmodel = qo_circuits.FullCnotCircuit(args.num_qubits, args.num_layers)
     elif args.model == "rand_layers":
         # np.random.seed(args.rand_seed_model)
+        adjoint_fix = (args.optimizer == "pl_qnspsa")
         qmodel = qo_circuits.RandomLayers(args.num_qubits, args.num_layers, 
                                         args.num_params, args.ratio_imprim, 
-                                        seed=args.rand_seed_model)
+                                        seed=args.rand_seed_model, adjoint_fix=adjoint_fix)
     else:
         raise Exception("Need to give a valid model option")
 
@@ -99,29 +100,33 @@ def main(args=None):
     # Make sure to add shot_num for accurate tracking of number of quantum circuit evals
 
     if args.optimizer == "sgd":
-        # python main.py --optimizer=sgd --learning_rate=0.1
+        # python main.py --optimizer=sgd --learning_rate=0.1 --no_wandb
         opt = qo_optim.PytorchSGD(params, args.learning_rate)
         shot_num = 1
     elif args.optimizer == "ges":
-        # python main.py --optimizer=ges --learning_rate=0.1 --explore_tradeoff=0.5 --grad_scale=2 --stddev=0.1 --grad_memory=10 --est_shots=1
+        # python main.py --optimizer=ges --learning_rate=0.1 --explore_tradeoff=0.5 --grad_scale=2 --stddev=0.1 --grad_memory=10 --est_shots=1 --no_wandb
         opt = qo_optim.GES(torch.numel(params), args.learning_rate, args.explore_tradeoff, 
                         args.grad_scale, args.stddev ** 2, args.grad_memory, args.est_shots)
         shot_num = 2 * args.est_shots
     elif args.optimizer == "xnes":
-        # python main.py --optimizer=xnes --stddev=1 --est_shots=2
+        # python main.py --optimizer=xnes --stddev=1 --est_shots=2 --no_wandb
         opt = qo_optim.xNES(param_len=torch.numel(params), stddev_init=args.stddev, num_shots=args.est_shots, nu_sigma=0.01, nu_b=0.01, nu_mu=0.1)
         shot_num = args.est_shots
+    elif args.optimizer == "snes":
+        # python main.py --optimizer=snes --stddev=1 --est_shots=2 --no_wandb
+        opt = qo_optim.sNES(param_len=torch.numel(params), stddev_init=args.stddev, num_shots=args.est_shots, nu_sigma=0.01, nu_mu=0.1)
+        shot_num = args.est_shots
     elif args.optimizer == "spsa":
-        # python main.py --optimizer=spsa --stddev=0.2 --est_shots=1 --alpha=0.602 --gamma=0.101
+        # python main.py --optimizer=spsa --stddev=0.2 --est_shots=1 --alpha=0.602 --gamma=0.101 --no_wandb
         opt = qo_optim.SPSA(param_len=torch.numel(params), maxiter=args.steps, num_shots=args.est_shots, 
                             alpha=args.alpha, c=args.stddev, gamma=args.gamma, A=None, a=None)
         shot_num = 2 * args.est_shots
     elif args.optimizer == "pl_spsa":
-        # python main.py --optimizer=pl_spsa --stddev=0.2 --est_shots=1 --alpha=0.602 --gamma=0.101 --interface=numpy
+        # python main.py --optimizer=pl_spsa --stddev=0.2 --est_shots=1 --alpha=0.602 --gamma=0.101 --interface=numpy --no_wandb
         opt = qml.SPSAOptimizer(maxiter=args.steps, alpha=args.alpha, gamma=args.gamma, c=args.stddev, A=None, a=None)
         shot_num = 2
     elif args.optimizer == "pl_qnspsa":
-        # python main.py --optimizer=pl_qnspsa --learning_rate=0.001 --metric_reg=0.001 --stddev=0.01 --est_shots=1 --interface=numpy
+        # python main.py --optimizer=pl_qnspsa --learning_rate=0.001 --metric_reg=0.001 --stddev=0.01 --est_shots=1 --interface=numpy --no_wandb
         opt = qml.QNSPSAOptimizer(stepsize=args.learning_rate, regularization=args.metric_reg, finite_diff_step=args.stddev, 
                                 resamplings=args.est_shots, blocking=True, history_length=5, seed=None)
         shot_num = 6 * args.est_shots

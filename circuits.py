@@ -15,7 +15,7 @@ class RandomLayers():
     """ Basically just a wrapper, implements qml.RandomLayers but in this interface
         https://docs.pennylane.ai/en/stable/code/api/pennylane.RandomLayers.html """
     
-    def __init__(self, num_qubits, num_layers, num_params, ratio_imprim, seed, state_circuit=None, measure_circuit=None):
+    def __init__(self, num_qubits, num_layers, num_params, ratio_imprim, seed, state_circuit=None, measure_circuit=None, adjoint_fix=False):
         """
         Arguments:
             arg (type): description
@@ -26,13 +26,22 @@ class RandomLayers():
         self.num_params = num_params
         self.ratio_imprim = ratio_imprim
         self.seed = seed
+        self.adjoint_fix = adjoint_fix
 
     def params_shape(self):
         return (self.num_layers, self.num_params)
 
     def circuit(self, params):
-        qml.RandomLayers(weights=params, wires=range(self.num_qubits), 
-                         ratio_imprim=self.ratio_imprim, seed=self.seed)
+        # Double adjoint is an annoying way to get around bug where adjoint isn't defined.
+        # Can disable whenever not using QNSPSA (not sure how badly this affects compute time)
+        if self.adjoint_fix:
+            qml.adjoint(qml.adjoint(  
+            qml.RandomLayers(weights=params, wires=range(self.num_qubits), 
+                            ratio_imprim=self.ratio_imprim, seed=self.seed)
+            ))
+        else:
+            qml.RandomLayers(weights=params, wires=range(self.num_qubits), 
+                            ratio_imprim=self.ratio_imprim, seed=self.seed)
 
 class FullCnotCircuit():
     """Circuit with universal single qubit gates followed by all possible combinations of cnots"""
