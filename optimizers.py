@@ -9,13 +9,15 @@ import pennylane as qml
 import math
 from copy import copy
 
+import util as qo_util
+
 # TODO: 2-SPSA (hessians)
 # TODO: AdamSPSA
 # TODO: sNES
 
 class SPSA_2():
-    """2nd order SPSA SPSA
-    Has option to switch between Hessian (2-SPSA) and Fubini-Study (QN-SPSA)
+    """2nd order Hessian SPSA
+    TODO: Add option to switch to Fubini-Study (QNSPSA)
     TODO: Not implemented fully. For now just using pennylane version for testing"""
 
     def __init__(self, param_len, metric, num_shots=1, stepsize=0.001, regularization=0.001, finite_diff_step=0.01, blocking=True, history_length=5, dev=None): 
@@ -32,37 +34,38 @@ class SPSA_2():
         self.blocking = blocking
         self.history_length = history_length
         self.dev = dev
+        self.metric_avg = torch.eye(param_len)
+        self.k = 1
 
-    def _get_operations(self, qnode, params):
-        qnode.construct([params], {})
-        return qnode.tape.operations
+    # def _get_operations(self, qnode, params):
+    #     qnode.construct([params], {})
+    #     return qnode.tape.operations
 
-    def _get_overlap_tape(self, qnode, params1, params2):
-        op_forward = self._get_operations(qnode, params1)
-        op_inv = self._get_operations(qnode, params2)
+    # def _get_overlap_tape(self, qnode, params1, params2):
+    #     op_forward = self._get_operations(qnode, params1)
+    #     op_inv = self._get_operations(qnode, params2)
 
-        with qml.tape.QuantumTape() as tape:
-            for op in op_forward:
-                qml.apply(op)
-            for op in reversed(op_inv):
-                qml.adjoint(copy(op))
-            qml.probs(wires=qnode.tape.wires.labels)
-        return tape
+    #     with qml.tape.QuantumTape() as tape:
+    #         for op in op_forward:
+    #             qml.apply(op)
+    #         for op in reversed(op_inv):
+    #             qml.adjoint(copy(op))
+    #         qml.probs(wires=qnode.tape.wires.labels)
+    #     return tape
 
-    def _get_state_overlap(self, qnode, params1, params2):
-        tape = self._get_overlap_tape(qnode, params1, params2)
-        return qml.execute([tape], self.dev, None)[0][0]
+    # def _get_state_overlap(self, qnode, params1, params2):
+    #     tape = self._get_overlap_tape(qnode, params1, params2)
+    #     return qml.execute([tape], self.dev, None)[0][0]
 
-    def _metric_sample(self, objective_fn, params_1, params_2, *args, **kwargs):
-        if self.metric == "fubini":
-            pass
-        elif self.metric == "hessian":
-            pass
-        else:
-            raise Exception("SPSA_2: Need to give valid metric")
+    # def _metric_sample(self, objective_fn, params_1, params_2, *args, **kwargs):
+        # if self.metric == "fubini":
+        #     pass
+        # elif self.metric == "hessian":
+        #     pass
+        # else:
+        #     raise Exception("SPSA_2: Need to give valid metric")
 
     def step(self, objective_fn, params, *args, **kwargs):
-        self.k += 1
         # ck = self.c / (self.k ** self.gamma)
         # 1st Order
         grad_est = torch.zeros(self.param_len)
@@ -78,6 +81,15 @@ class SPSA_2():
         for i in range(self.num_shots):
             eps_1 = 2 * torch.bernoulli(0.5 * torch.ones(self.param_len)) - 1  # Equal prob -1 or 1 per element
             eps_2 = 2 * torch.bernoulli(0.5 * torch.ones(self.param_len)) - 1  # Equal prob -1 or 1 per element
+            fp = objective_fn(params + torch.reshape(self.finite_diff_step * eps_1, params.shape), *args, **kwargs)
+            fn = objective_fn(params - torch.reshape(self.finite_diff_step * eps_1, params.shape), *args, **kwargs)
+            fp2 = objective_fn(params + torch.reshape(self.finite_diff_step * (eps_1 + eps_2), params.shape), *args, **kwargs)
+            fn2 = objective_fn(params - torch.reshape(self.finite_diff_step * (eps_1 - eps_2), params.shape), *args, **kwargs)
+            metric_est += (fp2 - fp - fn2 + fn) * (torch.outer(eps_1, eps_2) + torch.outer(eps_2, eps_1))
+        metric_est *= 1 / (4 * (self.finite_diff_step ** 2) * self.num_shots)
+        self.metric_avg = 1 / (self.k + 1) * metric_est + self.k / (self.k + 1) * self.metric_avg
+        self.metric_avg = self.regularization * torch.eye(self.param_len)
+        self.k += 1
 
         return params - ak * torch.reshape(grad_est, params.shape)
 
@@ -128,7 +140,6 @@ class SPSA():
         new_params = self.step(objective_fn, params, *args, **kwargs)
         return new_params, loss
 
-# TODO: Probably add option to prevent steps that significantly increase historical loss
 class xNES():
     """Exponential natural evolution strategies"""
 
@@ -142,7 +153,7 @@ class xNES():
             raise Exception("xNES: Need 2 or more shots per update step")
         self.n = param_len
         self.stddev = stddev_init
-        self.B = torch.eye(param_len) / stddev_init
+        self.B = torch.eye(param_len)
         self.num_shots = num_shots
         self.nu_sigma = nu_sigma
         self.nu_b = nu_b
@@ -153,14 +164,7 @@ class xNES():
             self.nu_b = (9 + 3 * math.log(param_len)) / (5 * (param_len ** 1.5))
         if not num_shots:
             self.num_shots = 4 + math.floor(3 * math.log(param_len))
-
-    def _utilities(self, fitness):
-        ordering = torch.argsort(fitness) + 1
-        utilities = math.log((self.num_shots / 2) + 1) - torch.log(ordering)
-        utilities[utilities < 0] = 0
-        utilities = utilities / torch.sum(utilities)
-        utilities = utilities - (1 / self.num_shots)
-        return utilities
+        self.utilities = qo_util.fitness_utilities(num_shots)
 
     def step_and_cost(self, objective_fn, params, *args, **kwargs):
         loss = objective_fn(params, *args, **kwargs)
@@ -173,35 +177,34 @@ class xNES():
         for i in range(self.num_shots):
             sk = torch.normal(mean=torch.zeros(self.n), std=1.0)
             zk = params + torch.reshape(self.stddev * torch.mv(self.B.t(), sk), params.shape)
-            fitnesses[i] = objective_fn(params + torch.reshape(zk, params.shape), *args, **kwargs)
+            fitnesses[i] = objective_fn(zk, *args, **kwargs)
             sk_list.append(sk)
-        utilities = self._utilities(fitnesses)
+        util_inds = torch.argsort(fitnesses)
         d_delta = torch.zeros(self.n)
         d_M = torch.zeros(self.n, self.n)
         for i in range(self.num_shots):
-            d_delta += utilities[i] * sk_list[i]
-            d_M += utilities[i] * (torch.outer(sk_list[i], sk_list[i]) - torch.eye(self.n))
+            j = util_inds[i]
+            d_delta += self.utilities[i] * sk_list[j]
+            d_M += self.utilities[i] * (torch.outer(sk_list[j], sk_list[j]) - torch.eye(self.n))
         d_stddev = torch.trace(d_M) / self.n
         d_B = d_M - (d_stddev * torch.eye(self.n))
         new_params = params + torch.reshape(self.nu_mu * self.stddev * torch.mv(self.B, d_delta), params.shape)
         self.stddev = self.stddev * torch.exp(self.nu_sigma / 2 * d_stddev)
         self.B = torch.mm(self.B, torch.matrix_exp(self.nu_b / 2 * d_B))
-        # print(new_params)
         return new_params
 
 class sNES():
     """Seperable exponential natural evolution strategies"""
 
-    def __init__(self, param_len, stddev_init=1, num_shots=2, nu_mu=1, nu_sigma=None):
+    def __init__(self, param_len, stddev_init=1, nu_mu=1, num_shots=None, nu_sigma=None):
         """
         Arguments:
             arg (type): description
             TODO
         """
         if num_shots and num_shots < 2:
-            raise Exception("xNES: Need 2 or more shots per update step")
+            raise Exception("sNES: Need 2 or more shots per update step")
         self.n = param_len
-        # self.stddev = stddev_init
         self.sigma = torch.ones(param_len) * stddev_init
         self.num_shots = num_shots
         self.nu_sigma = nu_sigma
@@ -210,14 +213,7 @@ class sNES():
             self.nu_sigma = (9 + 3 * math.log(param_len)) / (5 * (param_len ** 0.5))
         if not num_shots:
             self.num_shots = 4 + math.floor(3 * math.log(param_len))
-
-    def _utilities(self, fitness):
-        ordering = torch.argsort(fitness) + 1
-        utilities = math.log((self.num_shots / 2) + 1) - torch.log(ordering)
-        utilities[utilities < 0] = 0
-        utilities = utilities / torch.sum(utilities)
-        utilities = utilities - (1 / self.num_shots)
-        return utilities
+        self.utilities = qo_util.fitness_utilities(num_shots)
 
     def step_and_cost(self, objective_fn, params, *args, **kwargs):
         loss = objective_fn(params, *args, **kwargs)
@@ -230,14 +226,16 @@ class sNES():
         for i in range(self.num_shots):
             sk = torch.normal(mean=torch.zeros(self.n), std=1.0)
             zk = params + torch.reshape(self.sigma * sk, params.shape)
-            fitnesses[i] = objective_fn(params + torch.reshape(zk, params.shape), *args, **kwargs)
+            fitnesses[i] = objective_fn(zk, *args, **kwargs)
             sk_list.append(sk)
-        utilities = self._utilities(fitnesses)
+        # utilities = qo_util.fitness_utilities(fitnesses)
+        util_inds = torch.argsort(fitnesses)
         d_mu = torch.zeros(self.n)
         d_sigma = torch.zeros(self.n)
         for i in range(self.num_shots):
-            d_mu += utilities[i] * sk_list[i]
-            d_sigma += utilities[i] * (sk_list[i] ** 2 - 1)
+            j = util_inds[i]
+            d_mu += self.utilities[i] * sk_list[j]
+            d_sigma += self.utilities[i] * ((sk_list[j] ** 2) - 1)
         new_params = params + torch.reshape(self.nu_mu * self.sigma * d_mu, params.shape)
         self.sigma = self.sigma * torch.exp(self.nu_sigma / 2 * d_sigma)
         return new_params

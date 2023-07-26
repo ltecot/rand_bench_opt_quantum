@@ -2,6 +2,7 @@
 
 import torch
 import pennylane as qml
+import math
 
 # Hamiltonian for ising model (no external field)
 def ising_hamiltonian(num_qubits):
@@ -21,3 +22,13 @@ def transverse_ising_hamiltonian(num_qubits, h=0.5):
 def L2_state_loss(pred, target):
     diff = (pred - target)
     return torch.sqrt(torch.sum(diff.conj() * diff))
+
+# Fitness utilities, typically for NES
+# Basically is a log-ordering with zero mean and zero sum 
+def fitness_utilities(n):
+    inds = torch.arange(n) + 1
+    utilities = math.log((n / 2) + 1) - torch.log(inds)
+    utilities[utilities < 0] = 0
+    utilities = utilities / torch.sum(utilities)
+    utilities = utilities - (1 / n)
+    return utilities

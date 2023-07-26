@@ -128,3 +128,96 @@ qnspsa_hs = {
      }
 }
 merge_dict(hs_baseline, qnspsa_hs)
+
+xnes_hs = {
+    'name': 'xNES Hyperparam Sweep',
+    'parameters': 
+    {
+        'interface': {'value': 'torch'},
+        'optimizer': {'value': 'xnes'},
+        'est_shots': {'value': 2},
+        'nu_sigma': {
+            'distribution': 'log_uniform_values',
+            'min': 0.0001,
+            'max': 1
+        },
+        'nu_b': {
+            'distribution': 'log_uniform_values',
+            'min': 0.0001,
+            'max': 1
+        },
+        'nu_mu': {
+            'distribution': 'log_uniform_values',
+            'min': 0.0001,
+            'max': 1
+        },
+        'stddev': {
+            'distribution': 'log_uniform_values',
+            'min': 0.0001,
+            'max': 1
+        },
+     }
+}
+merge_dict(hs_baseline, xnes_hs)
+
+snes_hs = {
+    'name': 'sNES Hyperparam Sweep',
+    'parameters': 
+    {
+        'interface': {'value': 'torch'},
+        'optimizer': {'value': 'snes'},
+        'est_shots': {'value': 2},
+        'nu_sigma': {
+            'distribution': 'log_uniform_values',
+            'min': 0.0001,
+            'max': 1
+        },
+        'nu_mu': {
+            'distribution': 'log_uniform_values',
+            'min': 0.0001,
+            'max': 1
+        },
+        'stddev': {
+            'distribution': 'log_uniform_values',
+            'min': 0.0001,
+            'max': 1
+        },
+     }
+}
+merge_dict(hs_baseline, snes_hs)
+
+ges_hs = {
+    'name': 'GES Hyperparam Sweep',
+    'parameters': 
+    {
+        'interface': {'value': 'torch'},
+        'optimizer': {'value': 'ges'},
+        'est_shots': {'value': 1},
+        'learning_rate': {
+            'distribution': 'log_uniform_values',
+            'min': 0.0001,
+            'max': 1
+        },
+        'explore_tradeoff': {
+            'distribution': 'uniform',
+            'min': 0,
+            'max': 1
+        },
+        'grad_scale': {
+            'distribution': 'log_uniform_values',
+            'min': 0.1,
+            'max': 10
+        },
+        'stddev': {
+            'distribution': 'log_uniform_values',
+            'min': 0.0001,
+            'max': 1
+        },
+        'grad_memory': {
+            'distribution': 'int_uniform',
+            'min': 1,
+            'max': 50
+        },
+     }
+}
+merge_dict(hs_baseline, ges_hs)

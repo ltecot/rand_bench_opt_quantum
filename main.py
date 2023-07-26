@@ -45,6 +45,10 @@ parser.add_argument('--stddev', type=float, default=1e-1)  # Standard deviation 
 parser.add_argument('--explore_tradeoff', type=float, default=0.5)  # Percent to bias to indentity covariance. Alpha in GES.
 parser.add_argument('--grad_scale', type=float, default=1)  # Scale modifier of estimated gradients. Beta in GES.
 parser.add_argument('--grad_memory', type=int, default=10)  # Number of vectors to remember for biased sampling. k in GES.
+# NES
+parser.add_argument('--nu_mu', type=float, default=1)  # Exponential control constant of NES for mu (mean / parameters)
+parser.add_argument('--nu_sigma', type=float, default=None)  # Exponential control constant of NES for sigma (variance for xNES, sigma vector for sNES)
+parser.add_argument('--nu_b', type=float, default=None)  # Exponential control constant of xNES for B (normalized covariance)
 # SPSA
 parser.add_argument('--alpha', type=float, default=1)  # Exponential decay exponent of the learning rate for SPSA
 parser.add_argument('--gamma', type=float, default=1)  # Exponential decay exponent of the step size for SPSA
@@ -109,12 +113,14 @@ def main(args=None):
                         args.grad_scale, args.stddev ** 2, args.grad_memory, args.est_shots)
         shot_num = 2 * args.est_shots
     elif args.optimizer == "xnes":
-        # python main.py --optimizer=xnes --stddev=1 --est_shots=2 --no_wandb
-        opt = qo_optim.xNES(param_len=torch.numel(params), stddev_init=args.stddev, num_shots=args.est_shots, nu_sigma=0.01, nu_b=0.01, nu_mu=0.1)
+        # python main.py --optimizer=xnes --stddev=0.1 --est_shots=2 --nu_sigma=0.01 --nu_b=0.001 --nu_mu=0.1 --no_wandb
+        opt = qo_optim.xNES(param_len=torch.numel(params), stddev_init=args.stddev, num_shots=args.est_shots, 
+                            nu_sigma=args.nu_sigma, nu_b=args.nu_b, nu_mu=args.nu_mu)
         shot_num = args.est_shots
     elif args.optimizer == "snes":
-        # python main.py --optimizer=snes --stddev=1 --est_shots=2 --no_wandb
-        opt = qo_optim.sNES(param_len=torch.numel(params), stddev_init=args.stddev, num_shots=args.est_shots, nu_sigma=0.01, nu_mu=0.1)
+        # python main.py --optimizer=snes --stddev=0.1 --est_shots=2 --nu_sigma=0.01 --nu_mu=0.1 --no_wandb
+        opt = qo_optim.sNES(param_len=torch.numel(params), stddev_init=args.stddev, num_shots=args.est_shots, 
+                            nu_sigma=args.nu_sigma, nu_mu=args.nu_mu)
         shot_num = args.est_shots
     elif args.optimizer == "spsa":
         # python main.py --optimizer=spsa --stddev=0.2 --est_shots=1 --alpha=0.602 --gamma=0.101 --no_wandb
@@ -129,7 +135,7 @@ def main(args=None):
         # python main.py --optimizer=pl_qnspsa --learning_rate=0.001 --metric_reg=0.001 --stddev=0.01 --est_shots=1 --interface=numpy --no_wandb
         opt = qml.QNSPSAOptimizer(stepsize=args.learning_rate, regularization=args.metric_reg, finite_diff_step=args.stddev, 
                                 resamplings=args.est_shots, blocking=True, history_length=5, seed=None)
-        shot_num = 6 * args.est_shots
+        shot_num = 7 * args.est_shots  # 2 for grad, 4 for metric, 1 for blocking
     else:
         raise Exception("Need to give a valid optimizer option")
 
@@ -156,7 +162,6 @@ def main(args=None):
         # Keep track of progress every few steps
         if i % args.print_interval == 0:
             print(log)
-            # print(params)
     print(q_problem.eval())
     if log_wandb:
         wandb.finish()
