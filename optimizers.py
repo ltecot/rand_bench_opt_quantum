@@ -11,16 +11,14 @@ from copy import copy
 
 import util as qo_util
 
-# TODO: 2-SPSA (hessians)
 # TODO: AdamSPSA
-# TODO: sNES
+# TODO: Update default values to reflect ones in hyperparam sweep
 
 class SPSA_2():
     """2nd order Hessian SPSA
-    TODO: Add option to switch to Fubini-Study (QNSPSA)
-    TODO: Not implemented fully. For now just using pennylane version for testing"""
+    TODO: Add option to switch to Fubini-Study (QNSPSA). For now just use pennylane version."""
 
-    def __init__(self, param_len, metric, num_shots=1, stepsize=0.001, regularization=0.001, finite_diff_step=0.01, blocking=True, history_length=5, dev=None): 
+    def __init__(self, param_len, num_shots=1, stepsize=0.001, regularization=0.001, finite_diff_step=0.01, blocking=True, history_length=5): 
         """
         Arguments:
             arg (type): description
@@ -33,65 +31,53 @@ class SPSA_2():
         self.finite_diff_step = finite_diff_step
         self.blocking = blocking
         self.history_length = history_length
-        self.dev = dev
         self.metric_avg = torch.eye(param_len)
         self.k = 1
-
-    # def _get_operations(self, qnode, params):
-    #     qnode.construct([params], {})
-    #     return qnode.tape.operations
-
-    # def _get_overlap_tape(self, qnode, params1, params2):
-    #     op_forward = self._get_operations(qnode, params1)
-    #     op_inv = self._get_operations(qnode, params2)
-
-    #     with qml.tape.QuantumTape() as tape:
-    #         for op in op_forward:
-    #             qml.apply(op)
-    #         for op in reversed(op_inv):
-    #             qml.adjoint(copy(op))
-    #         qml.probs(wires=qnode.tape.wires.labels)
-    #     return tape
-
-    # def _get_state_overlap(self, qnode, params1, params2):
-    #     tape = self._get_overlap_tape(qnode, params1, params2)
-    #     return qml.execute([tape], self.dev, None)[0][0]
-
-    # def _metric_sample(self, objective_fn, params_1, params_2, *args, **kwargs):
-        # if self.metric == "fubini":
-        #     pass
-        # elif self.metric == "hessian":
-        #     pass
-        # else:
-        #     raise Exception("SPSA_2: Need to give valid metric")
+        if self.blocking:
+            self.loss_history = torch.zeros(history_length)
 
     def step(self, objective_fn, params, *args, **kwargs):
         # ck = self.c / (self.k ** self.gamma)
-        # 1st Order
         grad_est = torch.zeros(self.param_len)
+        metric_est = torch.zeros(self.param_len, self.param_len)
         for i in range(self.num_shots):
+            # 1st Order
             eps = 2 * torch.bernoulli(0.5 * torch.ones(self.param_len)) - 1  # Equal prob -1 or 1 per element
             fp = objective_fn(params + torch.reshape(self.finite_diff_step * eps, params.shape), *args, **kwargs)
             fn = objective_fn(params - torch.reshape(self.finite_diff_step * eps, params.shape), *args, **kwargs)
             grad_est += (fp - fn) * eps
-        grad_est *= 1 / (2 * self.finite_diff_step * self.num_shots)
-        # ak = self.a / ((self.A + self.k) ** self.alpha)
-        # 2nd Order
-        metric_est = torch.zeros(self.param_len, self.param_len)
-        for i in range(self.num_shots):
-            eps_1 = 2 * torch.bernoulli(0.5 * torch.ones(self.param_len)) - 1  # Equal prob -1 or 1 per element
+            # 2nd Order
+            eps_1 = eps  # Re-use prior sample
             eps_2 = 2 * torch.bernoulli(0.5 * torch.ones(self.param_len)) - 1  # Equal prob -1 or 1 per element
-            fp = objective_fn(params + torch.reshape(self.finite_diff_step * eps_1, params.shape), *args, **kwargs)
-            fn = objective_fn(params - torch.reshape(self.finite_diff_step * eps_1, params.shape), *args, **kwargs)
+            # fp = objective_fn(params + torch.reshape(self.finite_diff_step * eps_1, params.shape), *args, **kwargs)
+            # fn = objective_fn(params - torch.reshape(self.finite_diff_step * eps_1, params.shape), *args, **kwargs)
             fp2 = objective_fn(params + torch.reshape(self.finite_diff_step * (eps_1 + eps_2), params.shape), *args, **kwargs)
             fn2 = objective_fn(params - torch.reshape(self.finite_diff_step * (eps_1 - eps_2), params.shape), *args, **kwargs)
             metric_est += (fp2 - fp - fn2 + fn) * (torch.outer(eps_1, eps_2) + torch.outer(eps_2, eps_1))
+        grad_est *= 1 / (2 * self.finite_diff_step * self.num_shots)
         metric_est *= 1 / (4 * (self.finite_diff_step ** 2) * self.num_shots)
         self.metric_avg = 1 / (self.k + 1) * metric_est + self.k / (self.k + 1) * self.metric_avg
-        self.metric_avg = self.regularization * torch.eye(self.param_len)
+        # TODO: Maybe add sqrt(A^t A) below. Matrix should already be positive semi-definite and A^t = A so it seems pointless, but maybe I'm missing something.
+        pos_def_metric_avg = self.metric_avg + self.regularization * torch.eye(self.param_len)
+        # Solves the equation [x_{t+1} = x_t - lr * metric_matrix^{-1} * grad_x] by putting it into the form [A x_{t+1} = B]
+        # This is done to avoid finding the inverse of the metric matrix and potentially running into numerical stability issues.
+        new_params_vec = torch.linalg.solve(
+            pos_def_metric_avg,
+            (-self.stepsize * grad_est + torch.mv(pos_def_metric_avg, params.flatten())),
+        )
+        new_params = new_params_vec.reshape(params.shape)
+        if self.blocking:
+            # Assumes current params input is the same as last step's output.
+            loss_curr = self.loss_history[(self.k - 2) % self.history_length]
+            loss_next = objective_fn(new_params, *args, **kwargs)
+            tol = 2 * torch.std(self.loss_history) if self.k > self.history_length else 2 * torch.std(self.loss_history[:self.k-1])
+            if loss_curr + tol < loss_next:
+                new_params = params  # Cancel update if it doesn't meet threshold
+                self.loss_history[(self.k - 1) % self.history_length] = loss_curr
+            else:
+                self.loss_history[(self.k - 1) % self.history_length] = loss_next  # Add new loss to history if update is succesful
         self.k += 1
-
-        return params - ak * torch.reshape(grad_est, params.shape)
+        return new_params
 
     def step_and_cost(self, objective_fn, params, *args, **kwargs):
         loss = objective_fn(params, *args, **kwargs)

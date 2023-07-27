@@ -56,6 +56,66 @@ spsa_exp = {
 }
 merge_dict(exp_baseline, spsa_exp)
 
+qnspsa_exp = {
+    'name': 'QNSPSA Random Experiments',
+    'parameters': 
+    {
+        'interface': {'value': 'numpy'},
+        'optimizer': {'value': 'pl_qnspsa'},
+        'est_shots': {'value': 1},
+        'learning_rate': {'value': 0.01},
+        'stddev': {'value': 0.01},
+        'metric_reg': {'value': 0.001},
+     }
+}
+merge_dict(exp_baseline, qnspsa_exp)
+
+xnes_exp = {
+    'name': 'xNES Random Experiments',
+    'parameters': 
+    {
+        'interface': {'value': 'torch'},
+        'optimizer': {'value': 'xnes'},
+        'est_shots': {'value': 2},
+        'nu_sigma': {'value': 0.001},
+        'nu_b': {'value': 0.001},
+        'nu_mu': {'value': 0.1},
+        'stddev': {'value': 0.1},
+    }
+}
+merge_dict(exp_baseline, xnes_exp)
+
+snes_exp = {
+    'name': 'sNES Random Experiments',
+    'parameters': 
+    {
+        'interface': {'value': 'torch'},
+        'optimizer': {'value': 'snes'},
+        'est_shots': {'value': 2},
+        'nu_sigma': {'value': 0.01},
+        'nu_mu': {'value': 0.1},
+        'stddev': {'value': 0.1},
+    }
+}
+merge_dict(exp_baseline, snes_exp)
+
+ges_exp = {
+    'name': 'GES Random Experiments',
+    'parameters': 
+    {
+        'interface': {'value': 'torch'},
+        'optimizer': {'value': 'ges'},
+        'est_shots': {'value': 1},
+        'learning_rate': {'value': 0.1},
+        'explore_tradeoff': {'value': 0.5},
+        'grad_scale': {'value': 2},
+        'stddev': {'value': 0.01},
+        'grad_memory': {'value': 10},
+    }
+}
+merge_dict(exp_baseline, ges_exp)
+
+
 # ------------------ Hyperparam Sweeps ------------------
 
 hs_baseline = {
@@ -65,7 +125,7 @@ hs_baseline = {
     {
         'rand_seed': {'value': 42},
         'rand_seed_model': {'value': 42},
-        'rand_seed_problem': {'value': 42},
+        # 'rand_seed_problem': {'value': 42},
         'print_interval': {'value': 50},
         'num_qubits': {'value': 3},
         'problem': {'value': 'transverse_ising'},
@@ -128,6 +188,32 @@ qnspsa_hs = {
      }
 }
 merge_dict(hs_baseline, qnspsa_hs)
+
+spsa2_hs = {
+    'name': '2-SPSA Hyperparam Sweep',
+    'parameters': 
+    {
+        'interface': {'value': 'torch'},
+        'optimizer': {'value': '2spsa'},
+        'est_shots': {'value': 1},
+        'learning_rate': {
+            'distribution': 'log_uniform_values',
+            'min': 0.0001,
+            'max': 1
+        },
+        'stddev': {
+            'distribution': 'log_uniform_values',
+            'min': 0.0001,
+            'max': 1
+        },
+        'metric_reg': {
+            'distribution': 'log_uniform_values',
+            'min': 0.0001,
+            'max': 0.1
+        },
+     }
+}
+merge_dict(hs_baseline, spsa2_hs)
 
 xnes_hs = {
     'name': 'xNES Hyperparam Sweep',

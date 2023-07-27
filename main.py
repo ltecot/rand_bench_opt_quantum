@@ -21,7 +21,7 @@ import sweep_configs as qo_sc
 parser = argparse.ArgumentParser()
 parser.add_argument('--rand_seed', type=int, default=42)  # Global rand seed. Pseudo-random if not given
 parser.add_argument('--rand_seed_model', type=int, default=42)  # Seed for specifically model generation
-parser.add_argument('--rand_seed_problem', type=int, default=42)  # Seed for specifically problem generation
+# parser.add_argument('--rand_seed_problem', type=int, default=42)  # Seed for specifically problem generation
 parser.add_argument('--print_interval', type=int, default=1)  # Mostly just to see progress in terminal
 parser.add_argument('--num_qubits', type=int, default=2)  # Number of qubits
 parser.add_argument('--interface', type=str, default="torch")  # ML learning library to use
@@ -70,9 +70,11 @@ def main(args=None):
     
     np.random.seed(args.rand_seed)
     if not args.rand_seed_model:
-        args.rand_seed_model = np.random.randint(1e8)
-    if not args.rand_seed_problem:
-        args.rand_seed_problem = np.random.randint(1e8)
+        rs_model = np.random.randint(1e8)
+    else:
+        rs_model = args.rand_seed_model
+    # if not args.rand_seed_problem:
+    #     args.rand_seed_problem = np.random.randint(1e8)
 
     # ------------------ Model & Params ------------------
 
@@ -80,11 +82,10 @@ def main(args=None):
     if args.model == "full_cnot":
         qmodel = qo_circuits.FullCnotCircuit(args.num_qubits, args.num_layers)
     elif args.model == "rand_layers":
-        # np.random.seed(args.rand_seed_model)
         adjoint_fix = (args.optimizer == "pl_qnspsa")
         qmodel = qo_circuits.RandomLayers(args.num_qubits, args.num_layers, 
                                         args.num_params, args.ratio_imprim, 
-                                        seed=args.rand_seed_model, adjoint_fix=adjoint_fix)
+                                        seed=rs_model, adjoint_fix=adjoint_fix)
     else:
         raise Exception("Need to give a valid model option")
 
@@ -93,7 +94,7 @@ def main(args=None):
     if args.interface == "torch":
         params = np.random.normal(0, np.pi, qmodel.params_shape())
         rg = True if args.optimizer == "sgd" else False
-        params = torch.tensor(params, requires_grad=rg)
+        params = torch.tensor(params, requires_grad=rg).float()
     elif args.interface == "numpy":  # WARNING: All our code uses pytorch. Only use numpy for pennylane native optimizers and compatible problems.
         params = plnp.random.normal(0, plnp.pi, qmodel.params_shape())
     else:
@@ -127,12 +128,17 @@ def main(args=None):
         opt = qo_optim.SPSA(param_len=torch.numel(params), maxiter=args.steps, num_shots=args.est_shots, 
                             alpha=args.alpha, c=args.stddev, gamma=args.gamma, A=None, a=None)
         shot_num = 2 * args.est_shots
+    elif args.optimizer == "2spsa":
+        # python main.py --optimizer=2spsa --learning_rate=0.01 --metric_reg=0.001 --stddev=0.01 --est_shots=1 --no_wandb
+        opt = qo_optim.SPSA_2(param_len=torch.numel(params), stepsize=args.learning_rate, regularization=args.metric_reg, 
+                              finite_diff_step=args.stddev, num_shots=args.est_shots, blocking=True, history_length=5)
+        shot_num = 5 * args.est_shots  # 2 for grad, 2 extra for metric, 1 for blocking
     elif args.optimizer == "pl_spsa":
         # python main.py --optimizer=pl_spsa --stddev=0.2 --est_shots=1 --alpha=0.602 --gamma=0.101 --interface=numpy --no_wandb
         opt = qml.SPSAOptimizer(maxiter=args.steps, alpha=args.alpha, gamma=args.gamma, c=args.stddev, A=None, a=None)
         shot_num = 2
     elif args.optimizer == "pl_qnspsa":
-        # python main.py --optimizer=pl_qnspsa --learning_rate=0.001 --metric_reg=0.001 --stddev=0.01 --est_shots=1 --interface=numpy --no_wandb
+        # python main.py --optimizer=pl_qnspsa --learning_rate=0.01 --metric_reg=0.001 --stddev=0.01 --est_shots=1 --interface=numpy --no_wandb
         opt = qml.QNSPSAOptimizer(stepsize=args.learning_rate, regularization=args.metric_reg, finite_diff_step=args.stddev, 
                                 resamplings=args.est_shots, blocking=True, history_length=5, seed=None)
         shot_num = 7 * args.est_shots  # 2 for grad, 4 for metric, 1 for blocking
