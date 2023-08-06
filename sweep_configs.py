@@ -70,6 +70,20 @@ qnspsa_exp = {
 }
 merge_dict(exp_baseline, qnspsa_exp)
 
+spsa2_exp = {
+    'name': '2-SPSA Random Experiments',
+    'parameters': 
+    {
+        'interface': {'value': 'torch'},
+        'optimizer': {'value': '2spsa'},
+        'est_shots': {'value': 1},
+        'learning_rate': {'value': 0.1},
+        'stddev': {'value': 0.01},
+        'metric_reg': {'value': 0.001},
+     }
+}
+merge_dict(exp_baseline, spsa2_exp)
+
 xnes_exp = {
     'name': 'xNES Random Experiments',
     'parameters': 

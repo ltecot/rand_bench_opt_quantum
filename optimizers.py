@@ -126,6 +126,59 @@ class SPSA():
         new_params = self.step(objective_fn, params, *args, **kwargs)
         return new_params, loss
 
+class AdamSPSA():
+    """AdamSPSA
+       Only difference is instead of doing bias correction, we just initalize in a way that removes all bias."""
+
+    def __init__(self, param_len, num_shots=1, alpha=0.602, c=0.2, gamma=0.101, beta=0.999, lmd=0.9, zeta=0.999, maxiter=None, a=None, delta=1e-6): 
+        """
+        Arguments:
+            arg (type): description
+            TODO
+        """
+        if not maxiter and not a:
+            raise Exception("SPSA: Need to give valid maxiter or a")
+        self.param_len = param_len
+        self.num_shots = num_shots
+        self.c = c
+        self.gamma = gamma  # Sample step size decay
+        self.alpha = alpha  # Learning rate decay
+        self.beta = beta  # Momentum / first order metric decay
+        self.lmd = lmd  # Step decay for Momentum / first order metric decay
+        self.zeta = zeta  # Integral / second order metric decay
+        self.a = a
+        if not a:
+            self.a = 0.05 * (maxiter * 0.2 + 1) ** alpha  # Because we removed A this is probably a weird estimate, so probably don't use.
+        self.k = 0  # Step count
+        self.first_moment = torch.zeros(self.param_len)
+        self.second_moment = torch.zeros(self.param_len)
+        self.delta = delta
+
+    def step(self, objective_fn, params, *args, **kwargs):
+        self.k += 1
+        ck = self.c / (self.k ** self.gamma)
+        beta_k = self.beta / (self.k ** self.lmd)
+        ak = self.a / (self.k ** self.alpha)
+        grad_est = torch.zeros(self.param_len)
+        for i in range(self.num_shots):
+            eps = 2 * torch.bernoulli(0.5 * torch.ones(self.param_len)) - 1  # Equal prob -1 or 1 per element
+            fp = objective_fn(params + torch.reshape(ck * eps, params.shape), *args, **kwargs)
+            fn = objective_fn(params - torch.reshape(ck * eps, params.shape), *args, **kwargs)
+            grad_est += (fp - fn) * eps
+        grad_est *= 1 / (2 * ck * self.num_shots)
+        if self.k == 1:
+            self.first_moment = grad_est
+            self.second_moment = (grad_est ** 2)
+        else:
+            self.first_moment = beta_k * self.first_moment + (1 - beta_k) * grad_est
+            self.second_moment = self.zeta * self.second_moment + (1 - self.zeta) * (grad_est ** 2)
+        return params - ak * torch.reshape(self.first_moment / (torch.sqrt(self.second_moment) + self.delta), params.shape)
+
+    def step_and_cost(self, objective_fn, params, *args, **kwargs):
+        loss = objective_fn(params, *args, **kwargs)
+        new_params = self.step(objective_fn, params, *args, **kwargs)
+        return new_params, loss
+
 class xNES():
     """Exponential natural evolution strategies"""
 
