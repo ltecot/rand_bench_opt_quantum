@@ -6,6 +6,7 @@ import pennylane as qml
 import math
 import scipy.linalg
 import numpy as np
+import copy
 
 # Hamiltonian for ising model (no external field)
 def ising_hamiltonian(num_qubits):
@@ -16,6 +17,16 @@ def ising_hamiltonian(num_qubits):
 # Hamiltonian for transverse ising model
 def transverse_ising_hamiltonian(num_qubits, h=0.5):
     z_coeffs = [-1. for i in range(num_qubits)]
+    z_obs = [qml.PauliZ(i) @ qml.PauliZ((i+1) % num_qubits) for i in range(num_qubits)]
+    x_coeffs = [-h for i in range(num_qubits)]
+    x_obs = [qml.PauliX(i) for i in range(num_qubits)]
+    return qml.Hamiltonian(z_coeffs + x_coeffs, z_obs + x_obs)
+
+# Randomized Hamiltonia
+# Will sample random pairs of qubits and do the tensor between either a controlled X, Y, or Z (uniformly sampled)
+# Also weighs each spin pair interaction 
+def randomized_hamiltonian(num_qubits, num_random_singles, num_random_doubles):
+    z_coeffs = [-1. for i in range(num_random_singles + num_random_doubles)]
     z_obs = [qml.PauliZ(i) @ qml.PauliZ((i+1) % num_qubits) for i in range(num_qubits)]
     x_coeffs = [-h for i in range(num_qubits)]
     x_obs = [qml.PauliX(i) for i in range(num_qubits)]
@@ -35,6 +46,23 @@ def fitness_utilities(n):
     utilities = utilities / torch.sum(utilities)
     utilities = utilities - (1 / n)
     return utilities
+
+# Merge source information in destination dict
+def merge_dict_to_dest(source, destination):
+    for key, value in source.items():
+        if isinstance(value, dict):
+            # get node or create one
+            node = destination.setdefault(key, {})
+            merge_dict_to_dest(value, node)
+        else:
+            destination[key] = value
+
+# For sweep configs, merging dicts
+def merge_dict(source, destination):
+    new_dest = copy.deepcopy(destination)
+    merge_dict_to_dest(source, new_dest)
+    return new_dest
+
 
 # # Pytorch matrix sqrt
 # # https://github.com/steveli/pytorch-sqrtm

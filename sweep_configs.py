@@ -1,15 +1,19 @@
 
+from util import merge_dict
+
+sweep_configs = {}
+
 # ------------------ Util ------------------
 
-def merge_dict(source, destination):
-    for key, value in source.items():
-        if isinstance(value, dict):
-            # get node or create one
-            node = destination.setdefault(key, {})
-            merge_dict(value, node)
-        else:
-            destination[key] = value
-    return destination
+# def merge_dict(source, destination):
+#     for key, value in source.items():
+#         if isinstance(value, dict):
+#             # get node or create one
+#             node = destination.setdefault(key, {})
+#             merge_dict(value, node)
+#         else:
+#             destination[key] = value
+#     return destination
 
 # ------------------ Experiment Sweeps ------------------
 
@@ -54,7 +58,7 @@ spsa_exp = {
         'gamma': {'value': 0.101},
      }
 }
-merge_dict(exp_baseline, spsa_exp)
+sweep_configs["spsa_exp"] = merge_dict(exp_baseline, spsa_exp)
 
 qnspsa_exp = {
     'name': 'QNSPSA Random Experiments',
@@ -68,7 +72,7 @@ qnspsa_exp = {
         'metric_reg': {'value': 0.001},
      }
 }
-merge_dict(exp_baseline, qnspsa_exp)
+sweep_configs["qnspsa_exp"] = merge_dict(exp_baseline, qnspsa_exp)
 
 spsa2_exp = {
     'name': '2-SPSA Random Experiments',
@@ -82,7 +86,7 @@ spsa2_exp = {
         'metric_reg': {'value': 0.001},
      }
 }
-merge_dict(exp_baseline, spsa2_exp)
+sweep_configs["spsa2_exp"] = merge_dict(exp_baseline, spsa2_exp)
 
 xnes_exp = {
     'name': 'xNES Random Experiments',
@@ -97,7 +101,7 @@ xnes_exp = {
         'stddev': {'value': 0.1},
     }
 }
-merge_dict(exp_baseline, xnes_exp)
+sweep_configs["xnes_exp"] = merge_dict(exp_baseline, xnes_exp)
 
 snes_exp = {
     'name': 'sNES Random Experiments',
@@ -111,7 +115,7 @@ snes_exp = {
         'stddev': {'value': 0.1},
     }
 }
-merge_dict(exp_baseline, snes_exp)
+sweep_configs["snes_exp"] = merge_dict(exp_baseline, snes_exp)
 
 ges_exp = {
     'name': 'GES Random Experiments',
@@ -127,7 +131,7 @@ ges_exp = {
         'grad_memory': {'value': 10},
     }
 }
-merge_dict(exp_baseline, ges_exp)
+sweep_configs["ges_exp"] = merge_dict(exp_baseline, ges_exp)
 
 
 # ------------------ Hyperparam Sweeps ------------------
@@ -175,7 +179,58 @@ spsa_hs = {
         },
      }
 }
-merge_dict(hs_baseline, spsa_hs)
+sweep_configs["spsa_hs"] = merge_dict(hs_baseline, spsa_hs)
+
+adam_spsa_hs = {
+    'name': 'Adam SPSA Hyperparam Sweep',
+    'parameters': 
+    {
+        'interface': {'value': 'torch'},
+        'optimizer': {'value': 'adamspsa'},
+        'est_shots': {'value': 1},
+        'learning_rate': {
+            'distribution': 'log_uniform_values',
+            'min': 0.01,
+            'max': 1
+        },
+        'stddev': {
+            'distribution': 'uniform',
+            'min': 0.01,
+            'max': 1
+        },
+        'alpha': {
+            'distribution': 'uniform',
+            'min': 0.01,
+            'max': 1
+        },
+        'gamma': {
+            'distribution': 'uniform',
+            'min': 0.01,
+            'max': 1
+        },
+        'beta': {
+            'distribution': 'uniform',
+            'min': 0.01,
+            'max': 1
+        },
+        'beta': {
+            'distribution': 'uniform',
+            'min': 0.01,
+            'max': 1
+        },
+        'lmd': {
+            'distribution': 'uniform',
+            'min': 0.01,
+            'max': 1
+        },
+        'zeta': {
+            'distribution': 'uniform',
+            'min': 0.01,
+            'max': 1
+        },
+     }
+}
+sweep_configs["adam_spsa_hs"] = merge_dict(hs_baseline, adam_spsa_hs)
 
 qnspsa_hs = {
     'name': 'QNSPSA Hyperparam Sweep',
@@ -201,7 +256,7 @@ qnspsa_hs = {
         },
      }
 }
-merge_dict(hs_baseline, qnspsa_hs)
+sweep_configs["qnspsa_hs"] = merge_dict(hs_baseline, qnspsa_hs)
 
 spsa2_hs = {
     'name': '2-SPSA Hyperparam Sweep',
@@ -227,7 +282,7 @@ spsa2_hs = {
         },
      }
 }
-merge_dict(hs_baseline, spsa2_hs)
+sweep_configs["spsa2_hs"] = merge_dict(hs_baseline, spsa2_hs)
 
 xnes_hs = {
     'name': 'xNES Hyperparam Sweep',
@@ -258,7 +313,7 @@ xnes_hs = {
         },
      }
 }
-merge_dict(hs_baseline, xnes_hs)
+sweep_configs["xnes_hs"] = merge_dict(hs_baseline, xnes_hs)
 
 snes_hs = {
     'name': 'sNES Hyperparam Sweep',
@@ -284,7 +339,7 @@ snes_hs = {
         },
      }
 }
-merge_dict(hs_baseline, snes_hs)
+sweep_configs["snes_hs"] = merge_dict(hs_baseline, snes_hs)
 
 ges_hs = {
     'name': 'GES Hyperparam Sweep',
@@ -320,4 +375,4 @@ ges_hs = {
         },
      }
 }
-merge_dict(hs_baseline, ges_hs)
+sweep_configs["ges_hs"] = merge_dict(hs_baseline, ges_hs)

@@ -52,9 +52,9 @@ parser.add_argument('--nu_b', type=float, default=None)  # Exponential control c
 # SPSA
 parser.add_argument('--alpha', type=float, default=1)  # Exponential decay exponent of the learning rate for SPSA
 parser.add_argument('--gamma', type=float, default=1)  # Exponential decay exponent of the step size for SPSA
-# ADAM SPSA
+# Adam SPSA
 parser.add_argument('--beta', type=float, default=0.999)  # Multiplicative decay / weighting of the first-moment / momentum
-parser.add_argument('--lmd', type=float, default=0.9)  # Exponential decay exponent of the momentum weighting for methods using decaying momentum.
+parser.add_argument('--lmd', type=float, default=0.5)  # Exponential decay exponent of the momentum weighting for methods using decaying momentum.
 parser.add_argument('--zeta', type=float, default=0.999)  # Multiplicative decay / weighting of the second-moment / curvature correction
 # QNSPSA
 parser.add_argument('--metric_reg', type=float, default=0.001)  # Percent of identity to add to 2nd order metric so it's positive definite.
@@ -77,8 +77,6 @@ def main(args=None):
         rs_model = np.random.randint(1e8)
     else:
         rs_model = args.rand_seed_model
-    # if not args.rand_seed_problem:
-    #     args.rand_seed_problem = np.random.randint(1e8)
 
     # ------------------ Model & Params ------------------
 
@@ -133,10 +131,10 @@ def main(args=None):
                             alpha=args.alpha, c=args.stddev, gamma=args.gamma, A=None, a=None)
         shot_num = 2 * args.est_shots
     elif args.optimizer == "adamspsa":
-        # python main.py --optimizer=adamspsa --stddev=0.2 --est_shots=1 --alpha=0.602 --gamma=0.101 --no_wandb
-        opt = qo_optim.SPSA(param_len=torch.numel(params), maxiter=args.steps, num_shots=args.est_shots, 
-                            alpha=args.alpha, c=args.stddev, gamma=args.gamma, a=args.learning_rate,
-                            beta=args.beta, lmd=args.lmd, zeta=args.zeta)
+        # python main.py --optimizer=adamspsa --stddev=0.2 --est_shots=1 --learning_rate=0.1 --alpha=0.602 --gamma=0.101 --beta=0.999 --lmd=0.9 --zeta=0.999 --no_wandb
+        opt = qo_optim.AdamSPSA(param_len=torch.numel(params), maxiter=args.steps, num_shots=args.est_shots, 
+                                alpha=args.alpha, c=args.stddev, gamma=args.gamma, a=args.learning_rate,
+                                beta=args.beta, lmd=args.lmd, zeta=args.zeta)
         shot_num = 2 * args.est_shots
     elif args.optimizer == "2spsa":
         # python main.py --optimizer=2spsa --learning_rate=0.01 --metric_reg=0.001 --stddev=0.01 --est_shots=1 --no_wandb
@@ -187,9 +185,10 @@ if __name__ == "__main__":
     if not args.wandb_sweep:
         main(args)
     else:
-        config_str = "qo_sc." + args.wandb_config
+        # config_str = "qo_sc." + args.wandb_config
         sweep_id = wandb.sweep(
-            sweep=eval(config_str), 
+            # sweep=eval(config_str), 
+            sweep=qo_sc.sweep_configs[args.wandb_config], 
             project='quantum_optimization'
         )
         wandb.agent(sweep_id, function=main)

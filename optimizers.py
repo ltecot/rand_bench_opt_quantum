@@ -130,7 +130,7 @@ class AdamSPSA():
     """AdamSPSA
        Only difference is instead of doing bias correction, we just initalize in a way that removes all bias."""
 
-    def __init__(self, param_len, num_shots=1, alpha=0.602, c=0.2, gamma=0.101, beta=0.999, lmd=0.9, zeta=0.999, maxiter=None, a=None, delta=1e-6): 
+    def __init__(self, param_len, num_shots=1, alpha=0.602, c=0.2, gamma=0.101, beta=0.999, lmd=0.5, zeta=0.999, maxiter=None, a=None, delta=1e-6): 
         """
         Arguments:
             arg (type): description
