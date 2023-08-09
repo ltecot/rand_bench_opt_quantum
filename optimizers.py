@@ -11,9 +11,6 @@ from copy import copy
 
 import util as qo_util
 
-# TODO: AdamSPSA
-# TODO: Update default values to reflect ones in hyperparam sweep
-
 class SPSA_2():
     """2nd order Hessian SPSA
     TODO: Add option to switch to Fubini-Study (QNSPSA). For now just use pennylane version."""

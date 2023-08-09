@@ -1,7 +1,4 @@
 # File for running quantum optimization experiments
-# TODO: Add option to re-run this for multiple wandDB runs.
-# TODO: Make file to process multiple wandDB runs into plots (or some saved file maybe)
-# TODO: For now pennylane optimizers seem not to work
 
 import json
 import argparse
@@ -20,16 +17,17 @@ import sweep_configs as qo_sc
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--rand_seed', type=int, default=42)  # Global rand seed. Pseudo-random if not given
-parser.add_argument('--rand_seed_model', type=int, default=42)  # Seed for specifically model generation
-# parser.add_argument('--rand_seed_problem', type=int, default=42)  # Seed for specifically problem generation
 parser.add_argument('--print_interval', type=int, default=1)  # Mostly just to see progress in terminal
-parser.add_argument('--num_qubits', type=int, default=2)  # Number of qubits
+parser.add_argument('--num_qubits', type=int, default=10)  # Number of qubits
 parser.add_argument('--interface', type=str, default="torch")  # ML learning library to use
 parser.add_argument('--no_wandb', action=argparse.BooleanOptionalAction)  # To turn off wandb for debug
 parser.add_argument('--wandb_sweep', action=argparse.BooleanOptionalAction)  # Instead use a wandb sweep config for the run. All options used here must be provided by the config
 parser.add_argument('--wandb_config', type=str, default="")  # Sweep config to use. Make sure a config of this name exists in sweep_configs.py
 # ------------------------------------- Problems -------------------------------------
-parser.add_argument('--problem', type=str, default="transverse_ising")  # Type of problem to run circuit + optimizer on.
+parser.add_argument('--problem', type=str, default="randomized_hamiltonian")  # Type of problem to run circuit + optimizer on.
+# Randomized Hamiltonian
+parser.add_argument('--num_random_singles', type=int, default=10)  # Number of random single-qubit Paulis in the hamiltonian
+parser.add_argument('--num_random_doubles', type=int, default=20)  # Number of random two-qubit tensored Paulis in the hamiltonian
 # ------------------------------------- Model Circuit -------------------------------------
 parser.add_argument('--model', type=str, default="rand_layers") # Type of circuit "model" to use.
 parser.add_argument('--num_layers', type=int, default=3) # For models that have layers, the number of them.
@@ -73,10 +71,10 @@ def main(args=None):
         log_wandb = False
     
     np.random.seed(args.rand_seed)
-    if not args.rand_seed_model:
-        rs_model = np.random.randint(1e8)
+    if not args.rand_seed:
+        rand_seed = np.random.randint(1e8)
     else:
-        rs_model = args.rand_seed_model
+        rand_seed = args.rand_seed
 
     # ------------------ Model & Params ------------------
 
@@ -87,24 +85,25 @@ def main(args=None):
         adjoint_fix = (args.optimizer == "pl_qnspsa")
         qmodel = qo_circuits.RandomLayers(args.num_qubits, args.num_layers, 
                                         args.num_params, args.ratio_imprim, 
-                                        seed=rs_model, adjoint_fix=adjoint_fix)
+                                        seed=rand_seed, adjoint_fix=adjoint_fix)
     else:
         raise Exception("Need to give a valid model option")
 
     # INTERFACE / PARAMS
     # Some optimizers / problems are incompatible with some interfaces, so be careful when setting this.
+    np.random.seed(rand_seed)
+    params = np.random.normal(0, np.pi, qmodel.params_shape())
     if args.interface == "torch":
-        params = np.random.normal(0, np.pi, qmodel.params_shape())
         rg = True if args.optimizer == "sgd" else False
         params = torch.tensor(params, requires_grad=rg).float()
     elif args.interface == "numpy":  # WARNING: All our code uses pytorch. Only use numpy for pennylane native optimizers and compatible problems.
-        params = plnp.random.normal(0, plnp.pi, qmodel.params_shape())
+        params = plnp.copy(params)
     else:
         raise Exception("Need to give a valid ML library interface option")
 
     # ------------------ Optimizer ------------------
     # Default example run copies are included
-    # Make sure to add shot_num for accurate tracking of number of quantum circuit evals
+    # When adding more options here, make sure to add shot_num for accurate tracking of number of quantum circuit evals.
 
     if args.optimizer == "sgd":
         # python main.py --optimizer=sgd --learning_rate=0.1 --no_wandb
@@ -160,12 +159,19 @@ def main(args=None):
     elif args.problem == "transverse_ising":
         q_problem = qo_problems.HamiltonianMinimization(qmodel.circuit, params, opt, 
                                                         qo_util.transverse_ising_hamiltonian(args.num_qubits), args)
+    elif args.problem == "randomized_hamiltonian":
+        q_problem = qo_problems.HamiltonianMinimization(qmodel.circuit, params, opt, 
+                                                        qo_util.randomized_hamiltonian(args.num_qubits, 
+                                                                                       args.num_random_singles, 
+                                                                                       args.num_random_doubles, 
+                                                                                       rand_seed), 
+                                                        args)
     else:
         raise Exception("Need to give a valid problem option")
 
     # ------------------ Training ------------------
 
-    print(qml.draw(qmodel.circuit)(params))  # TODO: Probably also save this to wandb too
+    print(qml.draw(qmodel.circuit)(params))
     # wandb.run.log_code(".")  # Uncomment if you want to save code. Git hash should be saved by default.
     for i in range(args.steps):
         log = q_problem.step()
@@ -185,9 +191,7 @@ if __name__ == "__main__":
     if not args.wandb_sweep:
         main(args)
     else:
-        # config_str = "qo_sc." + args.wandb_config
         sweep_id = wandb.sweep(
-            # sweep=eval(config_str), 
             sweep=qo_sc.sweep_configs[args.wandb_config], 
             project='quantum_optimization'
         )

@@ -29,12 +29,11 @@ class HamiltonianMinimization():
             model_circuit(params)
             return qml.expval(hamiltonian)
         
-        dev = qml.device("default.qubit", wires=args.num_qubits)
+        dev = qml.device("lightning.qubit", wires=args.num_qubits)
         self.qnode = qml.QNode(full_circuit, dev, interface=args.interface)
 
     def step(self):
         new_params, loss = self.opt.step_and_cost(self.qnode, self.params)
-        # print(new_params.size())
         self.params = new_params
         return {"loss": loss.item()}
 
@@ -68,7 +67,7 @@ class RandomState():
             return qml.state()
             # return qml.expval(qml.Projector(target, wires=list(range(args.num_qubits))))  # Need to make (1 - expval)^2
         
-        dev = qml.device("default.qubit", wires=args.num_qubits)
+        dev = qml.device("lightning.qubit", wires=args.num_qubits)
         self.qnode = qml.QNode(full_circuit, dev, interface=args.interface)
 
     def _full_loss(self, params):

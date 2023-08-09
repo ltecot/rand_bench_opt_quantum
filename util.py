@@ -22,15 +22,25 @@ def transverse_ising_hamiltonian(num_qubits, h=0.5):
     x_obs = [qml.PauliX(i) for i in range(num_qubits)]
     return qml.Hamiltonian(z_coeffs + x_coeffs, z_obs + x_obs)
 
-# Randomized Hamiltonia
-# Will sample random pairs of qubits and do the tensor between either a controlled X, Y, or Z (uniformly sampled)
-# Also weighs each spin pair interaction 
-def randomized_hamiltonian(num_qubits, num_random_singles, num_random_doubles):
-    z_coeffs = [-1. for i in range(num_random_singles + num_random_doubles)]
-    z_obs = [qml.PauliZ(i) @ qml.PauliZ((i+1) % num_qubits) for i in range(num_qubits)]
-    x_coeffs = [-h for i in range(num_qubits)]
-    x_obs = [qml.PauliX(i) for i in range(num_qubits)]
-    return qml.Hamiltonian(z_coeffs + x_coeffs, z_obs + x_obs)
+# Randomized 1-and-2 Interation Hamiltonian
+# Samples random Pauli X, Y, or Z (uniformly sampled) for random qubits and weighs randomly
+# Will sample random pairs of qubits and do the tensor between either a Pauli X, Y, or Z (uniformly sampled)
+# Also weighs each spin pair interaction randomly
+def randomized_hamiltonian(num_qubits, num_random_singles, num_random_doubles, rand_seed):
+    np.random.seed(rand_seed)
+    coeffs = np.random.normal(0, np.pi, num_random_singles + num_random_doubles).tolist()
+    single_inds = np.random.randint(low=0, high=num_qubits, size=num_random_singles).tolist()
+    single_inds_xyz = np.random.randint(low=0, high=3, size=num_random_singles).tolist()
+    double_inds_first = np.random.randint(low=0, high=num_qubits, size=num_random_doubles)
+    double_inds_diff = np.random.randint(low=1, high=num_qubits, size=num_random_doubles)
+    double_inds_first_xyz = np.random.randint(low=0, high=3, size=num_random_doubles).tolist()
+    double_inds_second_xyz = np.random.randint(low=0, high=3, size=num_random_doubles).tolist()
+    double_inds_second = np.remainder(double_inds_first + double_inds_diff, num_qubits).tolist()
+    paulis = [[qml.PauliX(i), qml.PauliY(i), qml.PauliZ(i)] for i in range(num_qubits)]
+    single_obs = [paulis[i][j] for i, j in zip(single_inds, single_inds_xyz)]
+    double_obs = [paulis[i][ii] @ paulis[j][jj] for (i, ii, j, jj) in zip(double_inds_first, double_inds_first_xyz, 
+                                                                          double_inds_second, double_inds_second_xyz)]
+    return qml.Hamiltonian(coeffs, single_obs + double_obs)
 
 # L2 Loss for comparing two states
 def L2_state_loss(pred, target):

@@ -3,39 +3,35 @@ from util import merge_dict
 
 sweep_configs = {}
 
-# ------------------ Util ------------------
-
-# def merge_dict(source, destination):
-#     for key, value in source.items():
-#         if isinstance(value, dict):
-#             # get node or create one
-#             node = destination.setdefault(key, {})
-#             merge_dict(value, node)
-#         else:
-#             destination[key] = value
-#     return destination
-
 # ------------------ Experiment Sweeps ------------------
+
+# BASELINE - Combine with an experiment-specific dict
 
 exp_baseline = {
     'method': 'grid',
     'metric': {'goal': 'minimize', 'name': 'loss'},
     'parameters': 
     {
-        'rand_seed': {'value': None},
-        'rand_seed_model': {'values': [5632, 6145, 5123, 4626, 4117, 1558, 9241, 5155, 6193, 5685, 
-                                       3646, 4673, 5701, 8262, 3153, 3670, 5208, 8292, 1128, 618, 
-                                       2159, 4720, 6258, 9854, 8833, 141, 2195, 5784, 5787, 670, 
-                                       6305, 8866, 3241, 8881, 2237, 8382, 7364, 713, 4809, 7887, 
-                                       5329, 5341, 2270, 9443, 8935, 3314, 4339, 9468, 2815, 4354, 
-                                       2313, 3364, 9002, 6444, 1838, 3889, 4403, 5435, 9531, 3901, 
-                                       1854, 4924, 324, 325, 5956, 1861, 8527, 3927, 3419, 860, 
-                                       9570, 8549, 361, 8047, 3440, 3952, 6000, 8574, 7553, 6536, 
-                                       3465, 1429, 6551, 6039, 412, 2975, 8100, 7589, 2983, 9127, 
-                                       3502, 7093, 449, 6596, 6605, 3541, 7125, 6625, 9708, 6133]
+        'rand_seed': {'values': [5632, 6145, 5123, 4626, 4117, 1558, 9241, 5155, 6193, 5685, 
+                                 3646, 4673, 5701, 8262, 3153, 3670, 5208, 8292, 1128, 618, 
+                                 2159, 4720, 6258, 9854, 8833, 141, 2195, 5784, 5787, 670, 
+                                 6305, 8866, 3241, 8881, 2237, 8382, 7364, 713, 4809, 7887, 
+                                 5329, 5341, 2270, 9443, 8935, 3314, 4339, 9468, 2815, 4354, 
+                                 2313, 3364, 9002, 6444, 1838, 3889, 4403, 5435, 9531, 3901, 
+                                 1854, 4924, 324, 325, 5956, 1861, 8527, 3927, 3419, 860, 
+                                 9570, 8549, 361, 8047, 3440, 3952, 6000, 8574, 7553, 6536, 
+                                 3465, 1429, 6551, 6039, 412, 2975, 8100, 7589, 2983, 9127, 
+                                 3502, 7093, 449, 6596, 6605, 3541, 7125, 6625, 9708, 6133]
         },
-        # 'rand_seed_problem': {'value': None},  # For now this does nothing
         'print_interval': {'value': 50},
+     }
+}
+
+# SMALL ISING EXPERIMENT
+
+small_ising_exp = {
+    'parameters': 
+    {
         'num_qubits': {'value': 3},
         'problem': {'value': 'transverse_ising'},
         'model': {'value': 'rand_layers'},
@@ -45,8 +41,9 @@ exp_baseline = {
         'steps': {'value': 500},
      }
 }
+small_ising_exp_baseline = merge_dict(exp_baseline, small_ising_exp)
 
-spsa_exp = {
+small_ising_spsa_exp = {
     'name': 'SPSA Random Experiments',
     'parameters': 
     {
@@ -58,9 +55,27 @@ spsa_exp = {
         'gamma': {'value': 0.101},
      }
 }
-sweep_configs["spsa_exp"] = merge_dict(exp_baseline, spsa_exp)
+sweep_configs["small_ising_spsa_exp"] = merge_dict(small_ising_exp_baseline, small_ising_spsa_exp)
 
-qnspsa_exp = {
+small_ising_adam_spsa_exp = {
+    'name': 'Adam SPSA Random Experiments',
+    'parameters': 
+    {
+        'interface': {'value': 'torch'},
+        'optimizer': {'value': 'adamspsa'},
+        'est_shots': {'value': 1},
+        'stddev': {'value': 0.2},
+        'alpha': {'value': 0.602},
+        'gamma': {'value': 0.101},
+        'learning_rate': {'value': 0.1},
+        'beta': {'value': 0.99},
+        'lmd': {'value': 0.42},
+        'zeta': {'value': 0.99},
+     }
+}
+sweep_configs["small_ising_adam_spsa_exp"] = merge_dict(small_ising_exp_baseline, small_ising_adam_spsa_exp)
+
+small_ising_qnspsa_exp = {
     'name': 'QNSPSA Random Experiments',
     'parameters': 
     {
@@ -72,9 +87,9 @@ qnspsa_exp = {
         'metric_reg': {'value': 0.001},
      }
 }
-sweep_configs["qnspsa_exp"] = merge_dict(exp_baseline, qnspsa_exp)
+sweep_configs["small_ising_qnspsa_exp"] = merge_dict(small_ising_exp_baseline, small_ising_qnspsa_exp)
 
-spsa2_exp = {
+small_ising_spsa2_exp = {
     'name': '2-SPSA Random Experiments',
     'parameters': 
     {
@@ -86,9 +101,9 @@ spsa2_exp = {
         'metric_reg': {'value': 0.001},
      }
 }
-sweep_configs["spsa2_exp"] = merge_dict(exp_baseline, spsa2_exp)
+sweep_configs["small_ising_spsa2_exp"] = merge_dict(small_ising_exp_baseline, small_ising_spsa2_exp)
 
-xnes_exp = {
+small_ising_xnes_exp = {
     'name': 'xNES Random Experiments',
     'parameters': 
     {
@@ -101,9 +116,9 @@ xnes_exp = {
         'stddev': {'value': 0.1},
     }
 }
-sweep_configs["xnes_exp"] = merge_dict(exp_baseline, xnes_exp)
+sweep_configs["small_ising_xnes_exp"] = merge_dict(small_ising_exp_baseline, small_ising_xnes_exp)
 
-snes_exp = {
+small_ising_snes_exp = {
     'name': 'sNES Random Experiments',
     'parameters': 
     {
@@ -115,9 +130,9 @@ snes_exp = {
         'stddev': {'value': 0.1},
     }
 }
-sweep_configs["snes_exp"] = merge_dict(exp_baseline, snes_exp)
+sweep_configs["small_ising_snes_exp"] = merge_dict(small_ising_exp_baseline, small_ising_snes_exp)
 
-ges_exp = {
+small_ising_ges_exp = {
     'name': 'GES Random Experiments',
     'parameters': 
     {
@@ -131,20 +146,27 @@ ges_exp = {
         'grad_memory': {'value': 10},
     }
 }
-sweep_configs["ges_exp"] = merge_dict(exp_baseline, ges_exp)
-
+sweep_configs["small_ising_ges_exp"] = merge_dict(small_ising_exp_baseline, small_ising_ges_exp)
 
 # ------------------ Hyperparam Sweeps ------------------
+
+# BASELINE - Combine with an experiment-specific dict
 
 hs_baseline = {
     'method': 'random',
     'metric': {'goal': 'minimize', 'name': 'loss'},
     'parameters': 
     {
-        'rand_seed': {'value': 42},
-        'rand_seed_model': {'value': 42},
-        # 'rand_seed_problem': {'value': 42},
+        'rand_seed': {'values': [7, 13, 42]},
         'print_interval': {'value': 50},
+     }
+}
+
+# SPECIFIC EXPERIMENTS CONFIGS
+
+small_ising_hs = {
+    'parameters': 
+    {
         'num_qubits': {'value': 3},
         'problem': {'value': 'transverse_ising'},
         'model': {'value': 'rand_layers'},
@@ -154,6 +176,25 @@ hs_baseline = {
         'steps': {'value': 500},
      }
 }
+small_ising_hs_baseline = merge_dict(hs_baseline, small_ising_hs)
+
+random_hamiltonian_hs = {
+    'parameters': 
+    {
+        'num_qubits': {'value': 10},
+        'problem': {'value': 'randomized_hamiltonian'},
+        'num_random_singles' : {'value': 10},
+        'num_random_doubles' : {'value': 20},
+        'model': {'value': 'rand_layers'},
+        'num_layers': {'value': 3},
+        'num_params': {'value': 10},
+        'ratio_imprim': {'value': 0.3},
+        'steps': {'value': 500},
+     }
+}
+random_hamiltonian_hs_baseline = merge_dict(hs_baseline, random_hamiltonian_hs)
+
+# OPTIMIZER CONFIGS
 
 spsa_hs = {
     'name': 'SPSA Hyperparam Sweep',
@@ -179,7 +220,8 @@ spsa_hs = {
         },
      }
 }
-sweep_configs["spsa_hs"] = merge_dict(hs_baseline, spsa_hs)
+sweep_configs["small_ising_spsa_hs"] = merge_dict(small_ising_hs_baseline, spsa_hs)
+sweep_configs["random_hamiltonian_spsa_hs"] = merge_dict(random_hamiltonian_hs_baseline, spsa_hs)
 
 adam_spsa_hs = {
     'name': 'Adam SPSA Hyperparam Sweep',
@@ -213,11 +255,6 @@ adam_spsa_hs = {
             'min': 0.01,
             'max': 1
         },
-        'beta': {
-            'distribution': 'uniform',
-            'min': 0.01,
-            'max': 1
-        },
         'lmd': {
             'distribution': 'uniform',
             'min': 0.01,
@@ -230,7 +267,8 @@ adam_spsa_hs = {
         },
      }
 }
-sweep_configs["adam_spsa_hs"] = merge_dict(hs_baseline, adam_spsa_hs)
+sweep_configs["small_ising_adam_spsa_hs"] = merge_dict(small_ising_hs_baseline, adam_spsa_hs)
+sweep_configs["random_hamiltonian_adam_spsa_hs"] = merge_dict(random_hamiltonian_hs_baseline, adam_spsa_hs)
 
 qnspsa_hs = {
     'name': 'QNSPSA Hyperparam Sweep',
@@ -256,7 +294,8 @@ qnspsa_hs = {
         },
      }
 }
-sweep_configs["qnspsa_hs"] = merge_dict(hs_baseline, qnspsa_hs)
+sweep_configs["small_ising_qnspsa_hs"] = merge_dict(small_ising_hs_baseline, qnspsa_hs)
+sweep_configs["random_hamiltonian_qnspsa_hs"] = merge_dict(random_hamiltonian_hs_baseline, qnspsa_hs)
 
 spsa2_hs = {
     'name': '2-SPSA Hyperparam Sweep',
@@ -282,7 +321,8 @@ spsa2_hs = {
         },
      }
 }
-sweep_configs["spsa2_hs"] = merge_dict(hs_baseline, spsa2_hs)
+sweep_configs["small_ising_spsa2_hs"] = merge_dict(small_ising_hs_baseline, spsa2_hs)
+sweep_configs["random_hamiltonian_spsa2_hs"] = merge_dict(random_hamiltonian_hs_baseline, spsa2_hs)
 
 xnes_hs = {
     'name': 'xNES Hyperparam Sweep',
@@ -313,7 +353,8 @@ xnes_hs = {
         },
      }
 }
-sweep_configs["xnes_hs"] = merge_dict(hs_baseline, xnes_hs)
+sweep_configs["small_ising_xnes_hs"] = merge_dict(small_ising_hs_baseline, xnes_hs)
+sweep_configs["random_hamiltonian_xnes_hs"] = merge_dict(random_hamiltonian_hs_baseline, xnes_hs)
 
 snes_hs = {
     'name': 'sNES Hyperparam Sweep',
@@ -339,7 +380,8 @@ snes_hs = {
         },
      }
 }
-sweep_configs["snes_hs"] = merge_dict(hs_baseline, snes_hs)
+sweep_configs["small_ising_snes_hs"] = merge_dict(small_ising_hs_baseline, snes_hs)
+sweep_configs["random_hamiltonian_snes_hs"] = merge_dict(random_hamiltonian_hs_baseline, snes_hs)
 
 ges_hs = {
     'name': 'GES Hyperparam Sweep',
@@ -375,4 +417,5 @@ ges_hs = {
         },
      }
 }
-sweep_configs["ges_hs"] = merge_dict(hs_baseline, ges_hs)
+sweep_configs["small_ising_ges_hs"] = merge_dict(small_ising_hs_baseline, ges_hs)
+sweep_configs["random_hamiltonian_ges_hs"] = merge_dict(random_hamiltonian_hs_baseline, ges_hs)

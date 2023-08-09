@@ -7,32 +7,42 @@ import pennylane as qml
 from pennylane import numpy as plnp
 import util as qo_util
 
-rand_seed = 42
-rand_seed_model = 13
-interface = "numpy"
-params_shape = (3,3)
+num_qubits = 20
+num_random_singles = 50
+num_random_doubles = 50
+rand_seed_1 = 42
+rand_seed_2 = 43
 
-b = 32 + 24
+hamiltonian_1 = qo_util.randomized_hamiltonian(num_qubits, num_random_singles, num_random_doubles, rand_seed_1)
+hamiltonian_2 = qo_util.randomized_hamiltonian(num_qubits, num_random_singles, num_random_doubles, rand_seed_2)
 
-np.random.seed(rand_seed)
-if not rand_seed_model:
-    rs_model = np.random.randint(1e8)
-else:
-    rs_model = rand_seed_model
+print(hamiltonian_1.compare(hamiltonian_2))
 
-np.random.seed(rs_model)
-params = np.random.normal(0, np.pi, params_shape)
-if interface == "torch":
-    rg = False
-    params = torch.tensor(params, requires_grad=rg).float()
-elif interface == "numpy":  # WARNING: All our code uses pytorch. Only use numpy for pennylane native optimizers and compatible problems.
-    # plnp.random.seed(rs_model)
-    # params = plnp.random.normal(0, plnp.pi, params_shape)
-    params = plnp.copy(params)
-else:
-    raise Exception("Need to give a valid ML library interface option")
+# rs_model = 42
+# interface = "torch"
+# params_shape = (3,3)
 
-print(params)
+# b = 32 + 24
+
+# np.random.seed(rs_model)
+# if not rs_model:
+#     rs_model = np.random.randint(1e8)
+# else:
+#     rs_model = rs_model
+
+# np.random.seed(rs_model)
+# params = np.random.normal(0, np.pi, params_shape)
+# if interface == "torch":
+#     rg = False
+#     params = torch.tensor(params, requires_grad=rg).float()
+# elif interface == "numpy":  # WARNING: All our code uses pytorch. Only use numpy for pennylane native optimizers and compatible problems.
+#     # plnp.random.seed(rs_model)
+#     # params = plnp.random.normal(0, plnp.pi, params_shape)
+#     params = plnp.copy(params)
+# else:
+#     raise Exception("Need to give a valid ML library interface option")
+
+# print(params)
 
 # for i in range(2, 6):
 #     print(qo_util.fitness_utilities(i))
