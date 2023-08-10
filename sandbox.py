@@ -1,22 +1,40 @@
-import sweep_configs
-import pprint
-import numpy as np
-import torch
-import math
+# import sweep_configs
+# import pprint
+# import numpy as np
+# import torch
+# import math
+# import pennylane as qml
+# from pennylane import numpy as np
+# import util as qo_util
+
 import pennylane as qml
-from pennylane import numpy as plnp
-import util as qo_util
+from pennylane import numpy as np
 
-num_qubits = 20
-num_random_singles = 50
-num_random_doubles = 50
-rand_seed_1 = 42
-rand_seed_2 = 43
+# num_qubits = 2
+# dev = qml.device("default.qubit", wires=num_qubits)
+# @qml.qnode(dev)
+# def cost(params):
+#     qml.RX(params[0], wires=0)
+#     qml.CRY(params[1], wires=[0, 1])
+#     return qml.expval(qml.PauliZ(0) @ qml.PauliZ(1))
 
-hamiltonian_1 = qo_util.randomized_hamiltonian(num_qubits, num_random_singles, num_random_doubles, rand_seed_1)
-hamiltonian_2 = qo_util.randomized_hamiltonian(num_qubits, num_random_singles, num_random_doubles, rand_seed_2)
+# params = np.random.rand(2)
+# opt = qml.QNSPSAOptimizer(stepsize=5e-2)
+# for i in range(51):
+#     params, loss = opt.step_and_cost(cost, params)
+#     if i % 10 == 0:
+#         print(f"Step {i}: cost = {loss:.4f}")
 
-print(hamiltonian_1.compare(hamiltonian_2))
+# num_qubits = 20
+# num_random_singles = 50
+# num_random_doubles = 50
+# rand_seed_1 = 42
+# rand_seed_2 = 43
+
+# hamiltonian_1 = qo_util.randomized_hamiltonian(num_qubits, num_random_singles, num_random_doubles, rand_seed_1)
+# hamiltonian_2 = qo_util.randomized_hamiltonian(num_qubits, num_random_singles, num_random_doubles, rand_seed_2)
+
+# print(hamiltonian_1.compare(hamiltonian_2))
 
 # rs_model = 42
 # interface = "torch"
@@ -55,19 +73,19 @@ print(hamiltonian_1.compare(hamiltonian_2))
 #     order.append(j)
 # print(order)
 
-# num_qubits = 2
-# dev = qml.device("default.qubit", wires=num_qubits)
-# @qml.qnode(dev)
-# def cost(params):
-#     qml.RandomLayers(weights=params, wires=num_qubits, seed=42)
-#     return qml.expval(qml.PauliZ(0) @ qml.PauliZ(1))
+num_qubits = 2
+dev = qml.device("default.qubit", wires=num_qubits)
+@qml.qnode(dev)
+def cost(params):
+    qml.RandomLayers(weights=params, wires=num_qubits, seed=42)
+    return qml.expval(qml.PauliZ(0) @ qml.PauliZ(1))
 
-# params = plnp.random.normal(0, plnp.pi, (2, 4))
-# opt = qml.QNSPSAOptimizer(stepsize=5e-2)
-# for i in range(51):
-#     params, loss = opt.step_and_cost(cost, params)
-#     if i % 10 == 0:
-#         print(f"Step {i}: cost = {loss:.4f}")
+params = np.random.normal(0, np.pi, (2, 4))
+opt = qml.QNSPSAOptimizer(stepsize=5e-2)
+for i in range(51):
+    params, loss = opt.step_and_cost(cost, params)
+    if i % 10 == 0:
+        print(f"Step {i}: cost = {loss:.4f}")
 
 # pprint.pprint(sweep_configs.spsa_hs)
 

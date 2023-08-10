@@ -184,6 +184,83 @@ random_hamiltonian_spsa_exp = {
 }
 sweep_configs["random_hamiltonian_spsa_exp"] = merge_dict(random_hamiltonian_exp_baseline, random_hamiltonian_spsa_exp)
 
+random_hamiltonian_adam_spsa_exp = {
+    'name': 'Random Hamiltonian Adam SPSA Random Experiments',
+    'parameters': 
+    {
+        'interface': {'value': 'torch'},
+        'optimizer': {'value': 'spsa'},
+        'est_shots': {'value': 1},
+        'stddev': {'value': 0.2},
+        'alpha': {'value': 0.602},
+        'gamma': {'value': 0.101},
+        'learning_rate': {'value': 1},
+        'beta': {'value': 0.99},
+        'lmd': {'value': 0.42},
+        'zeta': {'value': 0.99},
+     }
+}
+sweep_configs["random_hamiltonian_adam_spsa_exp"] = merge_dict(random_hamiltonian_exp_baseline, random_hamiltonian_adam_spsa_exp)
+
+random_hamiltonian_spsa2_exp = {
+    'name': 'Randomized Hamiltonian 2-SPSA Random Experiments',
+    'parameters': 
+    {
+        'interface': {'value': 'torch'},
+        'optimizer': {'value': '2spsa'},
+        'est_shots': {'value': 1},
+        'learning_rate': {'value': 0.1},
+        'stddev': {'value': 0.2},
+        'metric_reg': {'value': 0.001},
+     }
+}
+sweep_configs["random_hamiltonian_spsa2_exp"] = merge_dict(random_hamiltonian_exp_baseline, random_hamiltonian_spsa2_exp)
+
+random_hamiltonian_xnes_exp = {
+    'name': 'Randomized Hamiltonian xNES Random Experiments',
+    'parameters': 
+    {
+        'interface': {'value': 'torch'},
+        'optimizer': {'value': 'xnes'},
+        'est_shots': {'value': 2},
+        'nu_sigma': {'value': 0.001},
+        'nu_b': {'value': 0.001},
+        'nu_mu': {'value': 0.1},
+        'stddev': {'value': 0.1},
+    }
+}
+sweep_configs["random_hamiltonian_xnes_exp"] = merge_dict(random_hamiltonian_exp_baseline, random_hamiltonian_xnes_exp)
+
+random_hamiltonian_snes_exp = {
+    'name': 'Randomized Hamiltonian sNES Random Experiments',
+    'parameters': 
+    {
+        'interface': {'value': 'torch'},
+        'optimizer': {'value': 'snes'},
+        'est_shots': {'value': 2},
+        'nu_sigma': {'value': 0.01},
+        'nu_mu': {'value': 0.1},
+        'stddev': {'value': 0.1},
+    }
+}
+sweep_configs["random_hamiltonian_snes_exp"] = merge_dict(random_hamiltonian_exp_baseline, random_hamiltonian_snes_exp)
+
+random_hamiltonian_ges_exp = {
+    'name': 'Randomized Hamiltonian GES Random Experiments',
+    'parameters': 
+    {
+        'interface': {'value': 'torch'},
+        'optimizer': {'value': 'ges'},
+        'est_shots': {'value': 1},
+        'learning_rate': {'value': 0.1},
+        'explore_tradeoff': {'value': 0.5},
+        'grad_scale': {'value': 1},
+        'stddev': {'value': 0.1},
+        'grad_memory': {'value': 25},
+    }
+}
+sweep_configs["random_hamiltonian_ges_exp"] = merge_dict(random_hamiltonian_exp_baseline, random_hamiltonian_ges_exp)
+
 # ------------------ Hyperparam Sweeps ------------------
 
 
