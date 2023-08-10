@@ -26,6 +26,7 @@ exp_baseline = {
                                  3502, 7093, 449, 6596, 6605, 3541, 7125, 6625, 9708, 6133]
         },
         'print_interval': {'value': 50},
+        'device': {'value': 'lightning.qubit'},
      }
 }
 
@@ -81,6 +82,7 @@ small_ising_qnspsa_exp = {
     'name': 'Small Ising QNSPSA Random Experiments',
     'parameters': 
     {
+        'device': {'value': 'default.qubit'},
         'interface': {'value': 'numpy'},
         'optimizer': {'value': 'pl_qnspsa'},
         'est_shots': {'value': 1},
@@ -150,6 +152,37 @@ small_ising_ges_exp = {
 }
 sweep_configs["small_ising_ges_exp"] = merge_dict(small_ising_exp_baseline, small_ising_ges_exp)
 
+# RANDOMIZED HAMILTONIAN EXPERIMENT
+
+random_hamiltonian_exp = {
+    'parameters': 
+    {
+        'num_qubits': {'value': 10},
+        'problem': {'value': 'randomized_hamiltonian'},
+        'num_random_singles' : {'value': 10},
+        'num_random_doubles' : {'value': 20},
+        'model': {'value': 'rand_layers'},
+        'num_layers': {'value': 3},
+        'num_params': {'value': 10},
+        'ratio_imprim': {'value': 0.3},
+        'steps': {'value': 500},
+     }
+}
+random_hamiltonian_exp_baseline = merge_dict(exp_baseline, random_hamiltonian_exp)
+
+random_hamiltonian_spsa_exp = {
+    'name': 'Random Hamiltonian SPSA Random Experiments',
+    'parameters': 
+    {
+        'interface': {'value': 'torch'},
+        'optimizer': {'value': 'spsa'},
+        'est_shots': {'value': 1},
+        'stddev': {'value': 0.2},
+        'alpha': {'value': 0.602},
+        'gamma': {'value': 0.101},
+     }
+}
+sweep_configs["random_hamiltonian_spsa_exp"] = merge_dict(random_hamiltonian_exp_baseline, random_hamiltonian_spsa_exp)
 
 # ------------------ Hyperparam Sweeps ------------------
 
@@ -163,6 +196,7 @@ hs_baseline = {
     {
         'rand_seed': {'values': [7, 13, 42]},
         'print_interval': {'value': 50},
+        'device': {'value': 'lightning.qubit'},
      }
 }
 
@@ -242,6 +276,7 @@ qnspsa_hs = {
     'name': 'QNSPSA Hyperparam Sweep',
     'parameters': 
     {
+        'device': {'value': 'default.qubit'},
         'interface': {'value': 'numpy'},
         'optimizer': {'value': 'pl_qnspsa'},
         'est_shots': {'value': 1},

@@ -68,7 +68,8 @@ def merge_dict_to_dest(source, destination):
             destination[key] = value
 
 # For sweep configs, merging dicts
-def merge_dict(source, destination):
+# If there are conflicts, source overwrites dest
+def merge_dict(destination, source):
     new_dest = copy.deepcopy(destination)
     merge_dict_to_dest(source, new_dest)
     return new_dest

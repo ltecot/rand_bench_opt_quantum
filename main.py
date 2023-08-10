@@ -20,6 +20,7 @@ parser.add_argument('--rand_seed', type=int, default=42)  # Global rand seed. Ps
 parser.add_argument('--print_interval', type=int, default=1)  # Mostly just to see progress in terminal
 parser.add_argument('--num_qubits', type=int, default=10)  # Number of qubits
 parser.add_argument('--interface', type=str, default="torch")  # ML learning library to use
+parser.add_argument('--device', type=str, default="lightning.qubit")  # Quantum computing device to use
 parser.add_argument('--no_wandb', action=argparse.BooleanOptionalAction)  # To turn off wandb for debug
 parser.add_argument('--wandb_sweep', action=argparse.BooleanOptionalAction)  # Instead use a wandb sweep config for the run. All options used here must be provided by the config
 parser.add_argument('--wandb_config', type=str, default="")  # Sweep config to use. Make sure a config of this name exists in sweep_configs.py
