@@ -216,6 +216,21 @@ random_hamiltonian_spsa2_exp = {
 }
 sweep_configs["random_hamiltonian_spsa2_exp"] = merge_dict(random_hamiltonian_exp_baseline, random_hamiltonian_spsa2_exp)
 
+random_hamiltonian_qnspsa_exp = {
+    'name': 'Randomized Hamiltonian QNSPSA Random Experiments',
+    'parameters': 
+    {
+        'device': {'value': 'default.qubit'},
+        'interface': {'value': 'numpy'},
+        'optimizer': {'value': 'pl_qnspsa'},
+        'est_shots': {'value': 1},
+        'learning_rate': {'value': 0.01},
+        'stddev': {'value': 0.01},
+        'metric_reg': {'value': 0.001},
+     }
+}
+sweep_configs["random_hamiltonian_qnspsa_exp"] = merge_dict(random_hamiltonian_exp_baseline, random_hamiltonian_qnspsa_exp)
+
 random_hamiltonian_xnes_exp = {
     'name': 'Randomized Hamiltonian xNES Random Experiments',
     'parameters': 
