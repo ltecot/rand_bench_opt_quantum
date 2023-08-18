@@ -8,6 +8,8 @@ import scipy.linalg
 import numpy as np
 import copy
 
+# ------------------ HAMILTONIANS ------------------
+
 # Hamiltonian for ising model (no external field)
 def ising_hamiltonian(num_qubits):
     z_coeffs = [-1. for i in range(num_qubits)]
@@ -21,6 +23,42 @@ def transverse_ising_hamiltonian(num_qubits, h=0.5):
     x_coeffs = [-h for i in range(num_qubits)]
     x_obs = [qml.PauliX(i) for i in range(num_qubits)]
     return qml.Hamiltonian(z_coeffs + x_coeffs, z_obs + x_obs)
+
+# Hamiltonian for the Quantum Heisenberg model
+def heisenberg_2d_hamiltonian(num_qubits, j=1.0, h=0.5):
+    # Raise an exception if num_qubits is not a perfect square
+    if not math.sqrt(num_qubits).is_integer():
+        raise ValueError("Number of qubits must be a perfect square")
+    # Create the Hamiltonian
+    coeffs = []
+    obs = []
+    # Enumrate over all qubits in grid, add interactions with qubits that are one index above in each direction
+    # Has closed border (AKA periodic boundary conditions)
+    nqbit_sqrt = int(math.sqrt(num_qubits))
+    for i in range(nqbit_sqrt):
+        for j in range(nqbit_sqrt):
+            my_qubit = i * nqbit_sqrt + j
+            right_qubit = i * nqbit_sqrt + (j + 1) % nqbit_sqrt
+            down_qubit = ((i + 1) % nqbit_sqrt) * nqbit_sqrt + j
+            # X interaction
+            coeffs.append(-j/2)
+            coeffs.append(-j/2)
+            obs.append(qml.PauliX(my_qubit) @ qml.PauliX(right_qubit))
+            obs.append(qml.PauliX(my_qubit) @ qml.PauliX(down_qubit))
+            # Y interaction
+            coeffs.append(-j/2)
+            coeffs.append(-j/2)
+            obs.append(qml.PauliY(my_qubit) @ qml.PauliY(right_qubit))
+            obs.append(qml.PauliY(my_qubit) @ qml.PauliY(down_qubit))
+            # Z interaction
+            coeffs.append(-j/2)
+            coeffs.append(-j/2)
+            obs.append(qml.PauliZ(my_qubit) @ qml.PauliZ(right_qubit))
+            obs.append(qml.PauliZ(my_qubit) @ qml.PauliZ(down_qubit))
+            # External field
+            coeffs.append(-h/2)
+            obs.append(qml.PauliZ(my_qubit))
+    return qml.Hamiltonian(coeffs, obs)
 
 # Randomized 1-and-2 Interation Hamiltonian
 # Samples random Pauli X, Y, or Z (uniformly sampled) for random qubits and weighs randomly
@@ -42,10 +80,34 @@ def randomized_hamiltonian(num_qubits, num_random_singles, num_random_doubles, r
                                                                           double_inds_second, double_inds_second_xyz)]
     return qml.Hamiltonian(coeffs, single_obs + double_obs)
 
+# ------------------ PROBABILITY DISTS ------------------
+
+def random_dist(num_qubits, rand_seed):
+    np.random.seed(rand_seed)
+    probs = np.random.normal(0, np.pi, 2 ** num_qubits)
+    probs_abs = torch.abs(torch.tensor(probs))
+    norm_probs = probs_abs / torch.sum(probs_abs)
+    return norm_probs
+
+def parity_dist(num_qubits, target_num):
+    cardinality = torch.tensor([bin(i).count("1") for i in range(2 ** num_qubits)])
+    probs = (cardinality == target_num).float()
+    norm_probs = probs / torch.sum(probs)
+    return norm_probs
+
+# ------------------ LOSS ------------------
+
 # L2 Loss for comparing two states
 def L2_state_loss(pred, target):
     diff = (pred - target)
     return torch.sqrt(torch.sum(diff.conj() * diff))
+
+# Negative log likelihood for quantum generative modeling
+def nll_loss(pred_probs, target_probs, eps=1e-8):
+    p_lp = target_probs * torch.log(torch.maximum(pred_probs, eps * torch.ones(pred_probs.size())))
+    return -torch.sum(p_lp)
+
+# ------------------ MISC ------------------
 
 # Fitness utilities, typically for NES
 # Basically is a log-ordering with zero mean and zero sum 
@@ -73,38 +135,3 @@ def merge_dict(destination, source):
     new_dest = copy.deepcopy(destination)
     merge_dict_to_dest(source, new_dest)
     return new_dest
-
-
-# # Pytorch matrix sqrt
-# # https://github.com/steveli/pytorch-sqrtm
-# class MatrixSquareRoot(Function):
-#     """Square root of a positive definite matrix.
-
-#     NOTE: matrix square root is not differentiable for matrices with
-#           zero eigenvalues.
-#     """
-#     @staticmethod
-#     def forward(ctx, input):
-#         m = input.detach().cpu().numpy().astype(np.float_)
-#         sqrtm = torch.from_numpy(scipy.linalg.sqrtm(m).real).to(input)
-#         ctx.save_for_backward(sqrtm)
-#         return sqrtm
-
-#     @staticmethod
-#     def backward(ctx, grad_output):
-#         grad_input = None
-#         if ctx.needs_input_grad[0]:
-#             sqrtm, = ctx.saved_tensors
-#             sqrtm = sqrtm.data.cpu().numpy().astype(np.float_)
-#             gm = grad_output.data.cpu().numpy().astype(np.float_)
-
-#             # Given a positive semi-definite matrix X,
-#             # since X = X^{1/2}X^{1/2}, we can compute the gradient of the
-#             # matrix square root dX^{1/2} by solving the Sylvester equation:
-#             # dX = (d(X^{1/2})X^{1/2} + X^{1/2}(dX^{1/2}).
-#             grad_sqrtm = scipy.linalg.solve_sylvester(sqrtm, sqrtm, gm)
-
-#             grad_input = torch.from_numpy(grad_sqrtm).to(grad_output)
-#         return grad_input
-
-# sqrtm = MatrixSquareRoot.apply

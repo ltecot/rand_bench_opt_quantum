@@ -42,6 +42,44 @@ class HamiltonianMinimization():
         return {"energy": energy}
 
 
+class GenerativeNLL():
+    """Problem to use negative log likeihood loss to minimize a input probability distribution"""
+
+    def __init__(self, model_circuit, params, optimizer, target_probs, args):
+        """
+        Arguments:
+            arg (type): description
+            TODO
+        """
+        self.params = params
+        self.opt = optimizer
+        self.target_probs = target_probs
+
+        def full_circuit(params):
+            model_circuit(params)
+            return qml.probs(wires=list(range(args.num_qubits)))
+        
+        dev = qml.device(args.device, wires=args.num_qubits)
+        self.qnode = qml.QNode(full_circuit, dev, interface=args.interface)
+
+    def _full_loss(self, params):
+        """Full end-to-end forward pass, taking params and maybe features as input.
+           We pass this function into the optimizer"""
+        pred_probs = self.qnode(params)
+        return qo_util.nll_loss(pred_probs, self.target_probs)
+
+    def step(self):
+        new_params, loss = self.opt.step_and_cost(self._full_loss, self.params)
+        self.params = new_params
+        return {"loss": loss.item()}
+
+    def eval(self):
+        pred_probs = self.qnode(self.params)
+        return {"prediction probabilities": pred_probs,
+                "target probabilities": self.target_probs, 
+                "loss": qo_util.nll_loss(pred_probs, self.target_probs)}
+
+
 class RandomState():
     """Problem where we're going from the default inital state to a random  state.
        TODO: Pennylane optimizers seem to not like optimizing non-qnode cost functions. Figure out how to fix or don't use their optimizers for now."""

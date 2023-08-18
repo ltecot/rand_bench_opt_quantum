@@ -276,6 +276,8 @@ random_hamiltonian_ges_exp = {
 }
 sweep_configs["random_hamiltonian_ges_exp"] = merge_dict(random_hamiltonian_exp_baseline, random_hamiltonian_ges_exp)
 
+
+
 # ------------------ Hyperparam Sweeps ------------------
 
 
@@ -534,6 +536,34 @@ sweep_configs["small_ising_snes_hs"] = merge_dict(small_ising_hs_baseline, snes_
 sweep_configs["small_ising_snes_hs"]["name"] = 'Small Ising sNES Hyperparam Sweep'
 sweep_configs["small_ising_ges_hs"] = merge_dict(small_ising_hs_baseline, ges_hs)
 sweep_configs["small_ising_ges_hs"]["name"] = 'Small Ising GES Hyperparam Sweep'
+
+heisenberg_2d_hs = {
+    'parameters': 
+    {
+        'num_qubits': {'value': 9},
+        'problem': {'value': '2d_heisenberg'},
+        'model': {'value': 'rand_layers'},
+        'num_layers': {'value': 9},
+        'num_params': {'value': 18},
+        'ratio_imprim': {'value': 0.3},
+        'steps': {'value': 1000},
+     }
+}
+heisenberg_2d_hs_baseline = merge_dict(hs_baseline, heisenberg_2d_hs)
+sweep_configs["heisenberg_2d_spsa_hs"] = merge_dict(heisenberg_2d_hs_baseline, spsa_hs)
+sweep_configs["heisenberg_2d_spsa_hs"]["name"] = '2d Heisenberg SPSA Hyperparam Sweep'
+sweep_configs["heisenberg_2d_adam_spsa_hs"] = merge_dict(heisenberg_2d_hs_baseline, adam_spsa_hs)
+sweep_configs["heisenberg_2d_adam_spsa_hs"]["name"] = '2d Heisenberg Adam SPSA Hyperparam Sweep'
+sweep_configs["heisenberg_2d_qnspsa_hs"] = merge_dict(heisenberg_2d_hs_baseline, qnspsa_hs)
+sweep_configs["heisenberg_2d_qnspsa_hs"]["name"] = '2d Heisenberg QNSPSA Hyperparam Sweep'
+sweep_configs["heisenberg_2d_spsa2_hs"] = merge_dict(heisenberg_2d_hs_baseline, spsa2_hs)
+sweep_configs["heisenberg_2d_spsa2_hs"]["name"] = '2d Heisenberg 2-SPSA Hyperparam Sweep'
+sweep_configs["heisenberg_2d_xnes_hs"] = merge_dict(heisenberg_2d_hs_baseline, xnes_hs)
+sweep_configs["heisenberg_2d_xnes_hs"]["name"] = '2d Heisenberg xNES Hyperparam Sweep'
+sweep_configs["heisenberg_2d_snes_hs"] = merge_dict(heisenberg_2d_hs_baseline, snes_hs)
+sweep_configs["heisenberg_2d_snes_hs"]["name"] = '2d Heisenberg sNES Hyperparam Sweep'
+sweep_configs["heisenberg_2d_ges_hs"] = merge_dict(heisenberg_2d_hs_baseline, ges_hs)
+sweep_configs["heisenberg_2d_ges_hs"]["name"] = '2d Heisenberg GES Hyperparam Sweep'
 
 random_hamiltonian_hs = {
     'parameters': 
