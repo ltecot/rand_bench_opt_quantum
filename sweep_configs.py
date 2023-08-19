@@ -5,7 +5,9 @@ from util import merge_dict
 
 sweep_configs = {}
 
-# ------------------ Experiment Sweeps ------------------
+# ---------------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------- Experiment Sweeps -------------------------------------------------
+# ---------------------------------------------------------------------------------------------------------------------
 
 # BASELINE - Combine with an experiment-specific dict
 
@@ -277,8 +279,9 @@ random_hamiltonian_ges_exp = {
 sweep_configs["random_hamiltonian_ges_exp"] = merge_dict(random_hamiltonian_exp_baseline, random_hamiltonian_ges_exp)
 
 
-
-# ------------------ Hyperparam Sweeps ------------------
+# ---------------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------- Hyperparam Sweeps -------------------------------------------------
+# ---------------------------------------------------------------------------------------------------------------------
 
 
 # BASELINE - Combine with an experiment-specific dict
@@ -594,3 +597,37 @@ sweep_configs["random_hamiltonian_snes_hs"] = merge_dict(random_hamiltonian_hs_b
 sweep_configs["random_hamiltonian_snes_hs"]["name"] = 'Random Hamiltonian sNES Hyperparam Sweep'
 sweep_configs["random_hamiltonian_ges_hs"] = merge_dict(random_hamiltonian_hs_baseline, ges_hs)
 sweep_configs["random_hamiltonian_ges_hs"]["name"] = 'Random Hamiltonian GES Hyperparam Sweep'
+
+# -----------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------- Custom Sweeps -------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------
+
+cardinality_generative_hs_randlayers = {
+    'parameters': 
+    {
+        'num_qubits': {'value': 10},
+        'problem': {'value': 'cardinality_generative'},
+        'model': {'value': 'rand_layers'},
+        'num_layers': {'value': 20},
+        'num_params': {'value': 20},
+        'ratio_imprim': {'value': 0.3},
+        'steps': {'value': 5000},
+     }
+}
+cardinality_generative_hs_randlayers_baseline = merge_dict(hs_baseline, cardinality_generative_hs_randlayers)
+sweep_configs["card_gen_randlayer_spsa_hs"] = merge_dict(cardinality_generative_hs_randlayers_baseline, spsa_hs)
+sweep_configs["card_gen_randlayer_spsa_hs"]["name"] = 'TEST Cardinality Generative Randlayers SPSA Hyperparam Sweep'
+
+cardinality_generative_hs_qcbm = {
+    'parameters': 
+    {
+        'num_qubits': {'value': 10},
+        'problem': {'value': 'cardinality_generative'},
+        'model': {'value': 'qcbm'},
+        'num_layers': {'value': 10},
+        'steps': {'value': 5000},
+     }
+}
+cardinality_generative_hs_qcbm_baseline = merge_dict(hs_baseline, cardinality_generative_hs_qcbm)
+sweep_configs["card_gen_qcbm_spsa_hs"] = merge_dict(cardinality_generative_hs_qcbm_baseline, spsa_hs)
+sweep_configs["card_gen_qcbm_spsa_hs"]["name"] = 'TEST Cardinality Generative QCBM SPSA Hyperparam Sweep'

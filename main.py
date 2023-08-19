@@ -18,21 +18,21 @@ import sweep_configs as qo_sc
 parser = argparse.ArgumentParser()
 parser.add_argument('--rand_seed', type=int, default=42)  # Global rand seed. Pseudo-random if not given
 parser.add_argument('--print_interval', type=int, default=1)  # Mostly just to see progress in terminal
-parser.add_argument('--num_qubits', type=int, default=9)  # Number of qubits
+parser.add_argument('--num_qubits', type=int, default=10)  # Number of qubits
 parser.add_argument('--interface', type=str, default="torch")  # ML learning library to use
 parser.add_argument('--device', type=str, default="lightning.qubit")  # Quantum computing device to use
 parser.add_argument('--no_wandb', action=argparse.BooleanOptionalAction)  # To turn off wandb for debug
 parser.add_argument('--wandb_sweep', action=argparse.BooleanOptionalAction)  # Instead use a wandb sweep config for the run. All options used here must be provided by the config
 parser.add_argument('--wandb_config', type=str, default="")  # Sweep config to use. Make sure a config of this name exists in sweep_configs.py
 # ------------------------------------- Problems -------------------------------------
-parser.add_argument('--problem', type=str, default="2d_heisenberg")  # Type of problem to run circuit + optimizer on.
+parser.add_argument('--problem', type=str, default="cardinality_generative")  # Type of problem to run circuit + optimizer on.
 # Randomized Hamiltonian
 parser.add_argument('--num_random_singles', type=int, default=10)  # Number of random single-qubit Paulis in the hamiltonian
 parser.add_argument('--num_random_doubles', type=int, default=20)  # Number of random two-qubit tensored Paulis in the hamiltonian
 # ------------------------------------- Model Circuit -------------------------------------
-parser.add_argument('--model', type=str, default="rand_layers") # Type of circuit "model" to use.
-parser.add_argument('--num_layers', type=int, default=50) # For models that have layers, the number of them.
-parser.add_argument('--num_params', type=int, default=10) # Number of parameters in used model, if it is changeable. If multiple layers, it's number per layer.
+parser.add_argument('--model', type=str, default="qcbm") # Type of circuit "model" to use.
+parser.add_argument('--num_layers', type=int, default=20) # For models that have layers, the number of them.
+parser.add_argument('--num_params', type=int, default=20) # Number of parameters in used model, if it is changeable. If multiple layers, it's number per layer.
 parser.add_argument('--ratio_imprim', type=float, default=0.3) # For randomized models, # of 2-qubit gates divided by number of 1-qubit gates.
 # ------------------------------------- Optimizers -------------------------------------
 parser.add_argument('--optimizer', type=str, default="spsa")  # Type of optimizer
@@ -77,7 +77,7 @@ def main(args=None):
     else:
         rand_seed = args.rand_seed
 
-    # ------------------ Model & Params ------------------
+    # ------------------ Circuit / Model + Params ------------------
 
     # MODEL / CIRCUIT
     if args.model == "full_cnot":
@@ -87,6 +87,8 @@ def main(args=None):
         qmodel = qo_circuits.RandomLayers(args.num_qubits, args.num_layers, 
                                         args.num_params, args.ratio_imprim, 
                                         seed=rand_seed, adjoint_fix=adjoint_fix)
+    elif args.model == "qcbm":
+        qmodel = qo_circuits.QcbmAnsatz(args.num_qubits, args.num_layers)
     else:
         raise Exception("Need to give a valid model option")
 
@@ -172,6 +174,8 @@ def main(args=None):
                                                         args)
     elif args.problem == "randomized_generative":
         q_problem = qo_problems.GenerativeNLL(qmodel.circuit, params, opt, qo_util.random_dist(args.num_qubits, rand_seed), args)
+    elif args.problem == "cardinality_generative":
+        q_problem = qo_problems.GenerativeNLL(qmodel.circuit, params, opt, qo_util.cardinality_dist(args.num_qubits, target_num=int(args.num_qubits/2)), args)
     else:
         raise Exception("Need to give a valid problem option")
 

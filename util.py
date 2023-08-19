@@ -89,7 +89,7 @@ def random_dist(num_qubits, rand_seed):
     norm_probs = probs_abs / torch.sum(probs_abs)
     return norm_probs
 
-def parity_dist(num_qubits, target_num):
+def cardinality_dist(num_qubits, target_num):
     cardinality = torch.tensor([bin(i).count("1") for i in range(2 ** num_qubits)])
     probs = (cardinality == target_num).float()
     norm_probs = probs / torch.sum(probs)
@@ -108,6 +108,16 @@ def nll_loss(pred_probs, target_probs, eps=1e-8):
     return -torch.sum(p_lp)
 
 # ------------------ MISC ------------------
+
+# For RXX in quantum generative model
+def RXX(theta):
+    rxx = np.array([
+        [np.cos(theta/2), 0, 0, -1j*np.sin(theta/2)],
+        [0, np.cos(theta/2), -1j*np.sin(theta/2), 0],
+        [0, -1j*np.sin(theta/2), np.cos(theta/2), 0],
+        [-1j*np.sin(theta/2), 0, 0, np.cos(theta/2)]
+    ])
+    return rxx
 
 # Fitness utilities, typically for NES
 # Basically is a log-ordering with zero mean and zero sum 
