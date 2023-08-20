@@ -32,7 +32,9 @@ exp_baseline = {
      }
 }
 
-# SMALL ISING EXPERIMENT
+
+# ------------------- SMALL ISING EXPERIMENT -------------------
+
 
 small_ising_exp = {
     'parameters': 
@@ -154,7 +156,9 @@ small_ising_ges_exp = {
 }
 sweep_configs["small_ising_ges_exp"] = merge_dict(small_ising_exp_baseline, small_ising_ges_exp)
 
-# RANDOMIZED HAMILTONIAN EXPERIMENT
+
+# ------------------- RANDOMIZED HAMILTONIAN EXPERIMENT -------------------
+
 
 random_hamiltonian_exp = {
     'parameters': 
@@ -277,6 +281,130 @@ random_hamiltonian_ges_exp = {
     }
 }
 sweep_configs["random_hamiltonian_ges_exp"] = merge_dict(random_hamiltonian_exp_baseline, random_hamiltonian_ges_exp)
+
+
+# ------------------- 2D HEISENBERG EXPERIMENT -------------------
+
+
+heisenberg_2d_exp = {
+    'parameters': 
+    {
+        'num_qubits': {'value': 9},
+        'problem': {'value': '2d_heisenberg'},
+        'model': {'value': 'rand_layers'},
+        'num_layers': {'value': 9},
+        'num_params': {'value': 18},
+        'ratio_imprim': {'value': 0.3},
+        'steps': {'value': 2000},
+     }
+}
+heisenberg_2d_exp_baseline = merge_dict(exp_baseline, heisenberg_2d_exp)
+
+heisenberg_2d_spsa_exp = {
+    'name': '2d Heisenberg SPSA Random Experiments',
+    'parameters': 
+    {
+        'interface': {'value': 'torch'},
+        'optimizer': {'value': 'spsa'},
+        'est_shots': {'value': 1},
+        'stddev': {'value': 0.2},
+        'alpha': {'value': 0.9},
+        'gamma': {'value': 0.3},
+     }
+}
+sweep_configs["heisenberg_2d_spsa_exp"] = merge_dict(heisenberg_2d_exp_baseline, heisenberg_2d_spsa_exp)
+
+heisenberg_2d_adam_spsa_exp = {
+    'name': '2d Heisenberg Adam SPSA Random Experiments',
+    'parameters': 
+    {
+        'interface': {'value': 'torch'},
+        'optimizer': {'value': 'spsa'},
+        'est_shots': {'value': 1},
+        'stddev': {'value': 0.2},
+        'alpha': {'value': 0.602},
+        'gamma': {'value': 0.101},
+        'learning_rate': {'value': 0.1},
+        'beta': {'value': 0.99},
+        'lmd': {'value': 0.42},
+        'zeta': {'value': 0.99},
+     }
+}
+sweep_configs["heisenberg_2d_adam_spsa_exp"] = merge_dict(heisenberg_2d_exp_baseline, heisenberg_2d_adam_spsa_exp)
+
+heisenberg_2d_spsa2_exp = {
+    'name': '2d Heisenberg 2-SPSA Random Experiments',
+    'parameters': 
+    {
+        'interface': {'value': 'torch'},
+        'optimizer': {'value': '2spsa'},
+        'est_shots': {'value': 1},
+        'learning_rate': {'value': 0.01},
+        'stddev': {'value': 0.2},
+        'metric_reg': {'value': 0.001},
+     }
+}
+sweep_configs["heisenberg_2d_spsa2_exp"] = merge_dict(heisenberg_2d_exp_baseline, heisenberg_2d_spsa2_exp)
+
+heisenberg_2d_qnspsa_exp = {
+    'name': '2d Heisenberg QNSPSA Random Experiments',
+    'parameters': 
+    {
+        'device': {'value': 'default.qubit'},
+        'interface': {'value': 'numpy'},
+        'optimizer': {'value': 'pl_qnspsa'},
+        'est_shots': {'value': 1},
+        'learning_rate': {'value': 0.01},
+        'stddev': {'value': 0.01},
+        'metric_reg': {'value': 0.001},
+     }
+}
+sweep_configs["heisenberg_2d_qnspsa_exp"] = merge_dict(heisenberg_2d_exp_baseline, heisenberg_2d_qnspsa_exp)
+
+heisenberg_2d_xnes_exp = {
+    'name': '2d Heisenberg xNES Random Experiments',
+    'parameters': 
+    {
+        'interface': {'value': 'torch'},
+        'optimizer': {'value': 'xnes'},
+        'est_shots': {'value': 2},
+        'nu_sigma': {'value': 0.01},
+        'nu_b': {'value': 0.0001},
+        'nu_mu': {'value': 0.5},
+        'stddev': {'value': 0.1},
+    }
+}
+sweep_configs["heisenberg_2d_xnes_exp"] = merge_dict(heisenberg_2d_exp_baseline, heisenberg_2d_xnes_exp)
+
+heisenberg_2d_snes_exp = {
+    'name': '2d Heisenberg sNES Random Experiments',
+    'parameters': 
+    {
+        'interface': {'value': 'torch'},
+        'optimizer': {'value': 'snes'},
+        'est_shots': {'value': 2},
+        'nu_sigma': {'value': 0.01},
+        'nu_mu': {'value': 0.5},
+        'stddev': {'value': 0.01},
+    }
+}
+sweep_configs["heisenberg_2d_snes_exp"] = merge_dict(heisenberg_2d_exp_baseline, heisenberg_2d_snes_exp)
+
+heisenberg_2d_ges_exp = {
+    'name': '2d Heisenberg GES Random Experiments',
+    'parameters': 
+    {
+        'interface': {'value': 'torch'},
+        'optimizer': {'value': 'ges'},
+        'est_shots': {'value': 1},
+        'learning_rate': {'value': 0.5},
+        'explore_tradeoff': {'value': 0.5},
+        'grad_scale': {'value': 3},
+        'stddev': {'value': 0.1},
+        'grad_memory': {'value': 10},
+    }
+}
+sweep_configs["heisenberg_2d_ges_exp"] = merge_dict(heisenberg_2d_exp_baseline, heisenberg_2d_ges_exp)
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -435,7 +563,7 @@ xnes_hs = {
         'nu_b': {
             'distribution': 'log_uniform_values',
             'min': 0.0001,
-            'max': 1
+            'max': 0.1
         },
         'nu_mu': {
             'distribution': 'log_uniform_values',
