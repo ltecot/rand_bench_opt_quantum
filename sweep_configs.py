@@ -531,9 +531,11 @@ qnspsa_hs = {
     'name': 'QNSPSA Hyperparam Sweep',
     'parameters': 
     {
-        'device': {'value': 'default.qubit'},
-        'interface': {'value': 'numpy'},
-        'optimizer': {'value': 'pl_qnspsa'},
+        # 'device': {'value': 'default.qubit'},
+        # 'interface': {'value': 'numpy'},
+        # 'optimizer': {'value': 'pl_qnspsa'},
+        'interface': {'value': 'torch'},
+        'optimizer': {'value': 'qnspsa'},
         'est_shots': {'value': 1},
         'learning_rate': {
             'distribution': 'log_uniform_values',

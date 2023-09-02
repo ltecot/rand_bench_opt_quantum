@@ -25,14 +25,14 @@ parser.add_argument('--no_wandb', action=argparse.BooleanOptionalAction)  # To t
 parser.add_argument('--wandb_sweep', action=argparse.BooleanOptionalAction)  # Instead use a wandb sweep config for the run. All options used here must be provided by the config
 parser.add_argument('--wandb_config', type=str, default="")  # Sweep config to use. Make sure a config of this name exists in sweep_configs.py
 # ------------------------------------- Problems -------------------------------------
-parser.add_argument('--problem', type=str, default="cardinality_generative")  # Type of problem to run circuit + optimizer on.
+parser.add_argument('--problem', type=str, default="randomized_hamiltonian")  # Type of problem to run circuit + optimizer on.
 # Randomized Hamiltonian
 parser.add_argument('--num_random_singles', type=int, default=10)  # Number of random single-qubit Paulis in the hamiltonian
-parser.add_argument('--num_random_doubles', type=int, default=20)  # Number of random two-qubit tensored Paulis in the hamiltonian
+parser.add_argument('--num_random_doubles', type=int, default=10)  # Number of random two-qubit tensored Paulis in the hamiltonian
 # ------------------------------------- Model Circuit -------------------------------------
-parser.add_argument('--model', type=str, default="qcbm") # Type of circuit "model" to use.
-parser.add_argument('--num_layers', type=int, default=20) # For models that have layers, the number of them.
-parser.add_argument('--num_params', type=int, default=20) # Number of parameters in used model, if it is changeable. If multiple layers, it's number per layer.
+parser.add_argument('--model', type=str, default="rand_layers") # Type of circuit "model" to use.
+parser.add_argument('--num_layers', type=int, default=10) # For models that have layers, the number of them.
+parser.add_argument('--num_params', type=int, default=10) # Number of parameters in used model, if it is changeable. If multiple layers, it's number per layer.
 parser.add_argument('--ratio_imprim', type=float, default=0.3) # For randomized models, # of 2-qubit gates divided by number of 1-qubit gates.
 # ------------------------------------- Optimizers -------------------------------------
 parser.add_argument('--optimizer', type=str, default="spsa")  # Type of optimizer
@@ -149,7 +149,7 @@ def main(args=None):
         shot_num = 5 * args.est_shots  # 2 for grad, 2 extra for metric, 1 for blocking
     elif args.optimizer == "qnspsa":
         # python main.py --optimizer=qnspsa --learning_rate=0.01 --metric_reg=0.001 --stddev=0.01 --est_shots=1 --no_wandb
-        opt = qo_optim.QNSPSA(param_len=torch.numel(params), circuit=qmodel, dev=dev, stepsize=args.learning_rate, regularization=args.metric_reg, 
+        opt = qo_optim.QNSPSA(param_len=torch.numel(params), circuit=qmodel.circuit, dev=dev, stepsize=args.learning_rate, regularization=args.metric_reg, 
                               finite_diff_step=args.stddev, num_shots=args.est_shots, blocking=True, history_length=5)
         shot_num = 7 * args.est_shots  # 2 for grad, 4 for metric, 1 for blocking
     elif args.optimizer == "pl_qnspsa":

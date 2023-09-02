@@ -1,6 +1,45 @@
-import util as qo_util
-dist = qo_util.cardinality_dist(3, target_num=1)
-print(dist)
+import pennylane as qml
+from copy import copy
+import circuits as qo_circuits
+import numpy as np
+import torch
+
+dev = qml.device("lightning.qubit", wires=5)
+
+qmodel = qo_circuits.RandomLayers(5, 5, 5, 0.3, seed=42, adjoint_fix=False)
+
+def dummy_circuit(params):
+    qmodel.circuit(params)
+    return qml.expval(qml.PauliZ(0))
+qnode = qml.QNode(dummy_circuit, dev, interface="torch")
+
+def get_state_overlap(params1, params2):
+    def get_operations(qnode, params):
+        qnode.construct([params], {})
+        return qnode.tape.operations
+    def get_overlap_tape(qnode, params1, params2):
+        op_forward = get_operations(qnode, params1)
+        op_inv = get_operations(qnode, params2)
+        with qml.tape.QuantumTape() as tape:
+            for op in op_forward:
+                qml.apply(op)
+            for op in reversed(op_inv):
+                qml.adjoint(copy(op))
+            qml.probs(wires=qnode.tape.wires.labels)
+        return tape
+    tape = get_overlap_tape(qnode, params1, params2)
+    return qml.execute([tape], dev, None)[0][0]
+
+params_1 = np.random.normal(0, np.pi, qmodel.params_shape())
+params_1 = torch.tensor(params_1, requires_grad=False).float()
+params_2 = np.random.normal(0, np.pi, qmodel.params_shape())
+params_2 = torch.tensor(params_2, requires_grad=False).float()
+print("Perfect overlap: ", get_state_overlap(params_1, params_1))
+print("Random state overlap: ", get_state_overlap(params_1, params_2))
+
+# import util as qo_util
+# dist = qo_util.cardinality_dist(3, target_num=1)
+# print(dist)
 # print(qo_util.nll_loss(dist, dist))
 
 # import sweep_configs

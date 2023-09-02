@@ -32,7 +32,12 @@ class QNSPSA():
         if self.blocking:
             self.loss_history = torch.zeros(history_length)
         # self.circuit = circuit
-        self.qnode = qml.QNode(circuit, dev, interface="torch")
+        # Qnode complains when you don't have a measurement, so we just add a dummy measurement to the end.
+        # It shouldn't affect the metric because we only extract the gate operations.
+        def dummy_circuit(params):
+            circuit(params)
+            return qml.expval(qml.PauliZ(0))
+        self.qnode = qml.QNode(dummy_circuit, dev, interface="torch")
         self.dev = dev
 
     def get_state_overlap(self, params1, params2):
