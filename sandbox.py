@@ -1,3 +1,8 @@
+import util as qo_util
+dist = qo_util.cardinality_dist(3, target_num=1)
+print(dist)
+# print(qo_util.nll_loss(dist, dist))
+
 # import sweep_configs
 # import pprint
 # import numpy as np
@@ -7,8 +12,8 @@
 # from pennylane import numpy as np
 # import util as qo_util
 
-print([bin(i) for i in range(2 ** 3)])
-print([bin(i).count("1") for i in range(2 ** 3)])
+# print([bin(i) for i in range(2 ** 3)])
+# print([bin(i).count("1") for i in range(2 ** 3)])
 
 # import pennylane as qml
 # from pennylane import numpy as np

@@ -16,7 +16,7 @@ import util as qo_util
 class HamiltonianMinimization():
     """Problem to minimize any hamiltonian observable"""
 
-    def __init__(self, model_circuit, params, optimizer, hamiltonian, args):
+    def __init__(self, model_circuit, params, optimizer, hamiltonian, dev, args):
         """
         Arguments:
             arg (type): description
@@ -29,7 +29,7 @@ class HamiltonianMinimization():
             model_circuit(params)
             return qml.expval(hamiltonian)
         
-        dev = qml.device(args.device, wires=args.num_qubits)
+        # dev = qml.device(args.device, wires=args.num_qubits)
         self.qnode = qml.QNode(full_circuit, dev, interface=args.interface)
 
     def step(self):
@@ -45,7 +45,7 @@ class HamiltonianMinimization():
 class GenerativeNLL():
     """Problem to use negative log likeihood loss to minimize a input probability distribution"""
 
-    def __init__(self, model_circuit, params, optimizer, target_probs, args):
+    def __init__(self, model_circuit, params, optimizer, target_probs, dev, args):
         """
         Arguments:
             arg (type): description
@@ -59,7 +59,7 @@ class GenerativeNLL():
             model_circuit(params)
             return qml.probs(wires=list(range(args.num_qubits)))
         
-        dev = qml.device(args.device, wires=args.num_qubits)
+        # dev = qml.device(args.device, wires=args.num_qubits)
         self.qnode = qml.QNode(full_circuit, dev, interface=args.interface)
 
     def _full_loss(self, params):
@@ -84,7 +84,7 @@ class RandomState():
     """Problem where we're going from the default inital state to a random  state.
        TODO: Pennylane optimizers seem to not like optimizing non-qnode cost functions. Figure out how to fix or don't use their optimizers for now."""
 
-    def __init__(self, model_circuit, params, optimizer, args, target=None):
+    def __init__(self, model_circuit, params, optimizer, dev, args, target=None):
         """
         Arguments:
             arg (type): description
@@ -105,7 +105,7 @@ class RandomState():
             return qml.state()
             # return qml.expval(qml.Projector(target, wires=list(range(args.num_qubits))))  # Need to make (1 - expval)^2
         
-        dev = qml.device(args.device, wires=args.num_qubits)
+        # dev = qml.device(args.device, wires=args.num_qubits)
         self.qnode = qml.QNode(full_circuit, dev, interface=args.interface)
 
     def _full_loss(self, params):

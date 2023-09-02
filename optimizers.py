@@ -11,9 +11,97 @@ from copy import copy
 
 import util as qo_util
 
+class QNSPSA():
+    """Quantum Natural SPSA"""
+
+    def __init__(self, param_len, circuit, dev, num_shots=1, stepsize=0.001, regularization=0.001, finite_diff_step=0.01, blocking=True, history_length=5): 
+        """
+        Arguments:
+            arg (type): description
+            TODO
+        """
+        self.param_len = param_len
+        self.num_shots = num_shots
+        self.stepsize = stepsize
+        self.regularization = regularization
+        self.finite_diff_step = finite_diff_step
+        self.blocking = blocking
+        self.history_length = history_length
+        self.metric_avg = torch.eye(param_len)
+        self.k = 1
+        if self.blocking:
+            self.loss_history = torch.zeros(history_length)
+        # self.circuit = circuit
+        self.qnode = qml.QNode(circuit, dev, interface="torch")
+        self.dev = dev
+
+    def get_state_overlap(self, params1, params2):
+        def get_operations(qnode, params):
+            qnode.construct([params], {})
+            return qnode.tape.operations
+        def get_overlap_tape(qnode, params1, params2):
+            op_forward = get_operations(qnode, params1)
+            op_inv = get_operations(qnode, params2)
+            with qml.tape.QuantumTape() as tape:
+                for op in op_forward:
+                    qml.apply(op)
+                for op in reversed(op_inv):
+                    qml.adjoint(copy(op))
+                qml.probs(wires=qnode.tape.wires.labels)
+            return tape
+        tape = get_overlap_tape(self.qnode, params1, params2)
+        return qml.execute([tape], self.dev, None)[0][0]
+
+    def step(self, objective_fn, params, *args, **kwargs):
+        # ck = self.c / (self.k ** self.gamma)
+        grad_est = torch.zeros(self.param_len)
+        metric_est = torch.zeros(self.param_len, self.param_len)
+        for i in range(self.num_shots):
+            # 1st Order
+            eps = 2 * torch.bernoulli(0.5 * torch.ones(self.param_len)) - 1  # Equal prob -1 or 1 per element
+            fp = objective_fn(params + torch.reshape(self.finite_diff_step * eps, params.shape), *args, **kwargs)
+            fn = objective_fn(params - torch.reshape(self.finite_diff_step * eps, params.shape), *args, **kwargs)
+            grad_est += (fp - fn) * eps
+            # 2nd Order
+            eps_1 = eps  # Re-use prior sample
+            eps_2 = 2 * torch.bernoulli(0.5 * torch.ones(self.param_len)) - 1  # Equal prob -1 or 1 per element
+            fp1 = self.get_state_overlap(params, params + torch.reshape(self.finite_diff_step * eps_1, params.shape))
+            fn1 = self.get_state_overlap(params, params - torch.reshape(self.finite_diff_step * eps_1, params.shape))
+            fp2 = self.get_state_overlap(params, params + torch.reshape(self.finite_diff_step * (eps_1 + eps_2), params.shape))
+            fn2 = self.get_state_overlap(params, params - torch.reshape(self.finite_diff_step * (eps_1 - eps_2), params.shape))
+            metric_est += (fp2 - fp1 - fn2 + fn1) * (torch.outer(eps_1, eps_2) + torch.outer(eps_2, eps_1))
+        grad_est *= 1 / (2 * self.finite_diff_step * self.num_shots)
+        metric_est *= 1 / (8 * (self.finite_diff_step ** 2) * self.num_shots)
+        self.metric_avg = 1 / (self.k + 1) * metric_est + self.k / (self.k + 1) * self.metric_avg
+        # TODO: Maybe add sqrt(A^t A) below. Matrix should already be positive semi-definite and A^t = A so it seems pointless, but maybe I'm missing something.
+        pos_def_metric_avg = self.metric_avg + self.regularization * torch.eye(self.param_len)
+        # Solves the equation [x_{t+1} = x_t - lr * metric_matrix^{-1} * grad_x] by putting it into the form [A x_{t+1} = B]
+        # This is done to avoid finding the inverse of the metric matrix and potentially running into numerical stability issues.
+        new_params_vec = torch.linalg.solve(
+            pos_def_metric_avg,
+            (-self.stepsize * grad_est + torch.mv(pos_def_metric_avg, params.flatten())),
+        )
+        new_params = new_params_vec.reshape(params.shape)
+        if self.blocking:
+            # Assumes current params input is the same as last step's output.
+            loss_curr = self.loss_history[(self.k - 2) % self.history_length]
+            loss_next = objective_fn(new_params, *args, **kwargs)
+            tol = 2 * torch.std(self.loss_history) if self.k > self.history_length else 2 * torch.std(self.loss_history[:self.k-1])
+            if loss_curr + tol < loss_next:
+                new_params = params  # Cancel update if it doesn't meet threshold
+                self.loss_history[(self.k - 1) % self.history_length] = loss_curr
+            else:
+                self.loss_history[(self.k - 1) % self.history_length] = loss_next  # Add new loss to history if update is succesful
+        self.k += 1
+        return new_params
+
+    def step_and_cost(self, objective_fn, params, *args, **kwargs):
+        loss = objective_fn(params, *args, **kwargs)
+        new_params = self.step(objective_fn, params, *args, **kwargs)
+        return new_params, loss
+
 class SPSA_2():
-    """2nd order Hessian SPSA
-    TODO: Add option to switch to Fubini-Study (QNSPSA). For now just use pennylane version."""
+    """2nd order Hessian SPSA"""
 
     def __init__(self, param_len, num_shots=1, stepsize=0.001, regularization=0.001, finite_diff_step=0.01, blocking=True, history_length=5): 
         """

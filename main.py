@@ -77,9 +77,12 @@ def main(args=None):
     else:
         rand_seed = args.rand_seed
 
-    # ------------------ Circuit / Model + Params ------------------
+    # ------------------ Device ------------------
 
-    # MODEL / CIRCUIT
+    dev = qml.device(args.device, wires=args.num_qubits)
+
+    # ------------------ Circuit / Model ------------------
+
     if args.model == "full_cnot":
         qmodel = qo_circuits.FullCnotCircuit(args.num_qubits, args.num_layers)
     elif args.model == "rand_layers":
@@ -92,8 +95,9 @@ def main(args=None):
     else:
         raise Exception("Need to give a valid model option")
 
-    # INTERFACE / PARAMS
+    # ------------------ Interface / Params ------------------
     # Some optimizers / problems are incompatible with some interfaces, so be careful when setting this.
+
     np.random.seed(rand_seed)
     params = np.random.normal(0, np.pi, qmodel.params_shape())
     if args.interface == "torch":
@@ -143,6 +147,11 @@ def main(args=None):
         opt = qo_optim.SPSA_2(param_len=torch.numel(params), stepsize=args.learning_rate, regularization=args.metric_reg, 
                               finite_diff_step=args.stddev, num_shots=args.est_shots, blocking=True, history_length=5)
         shot_num = 5 * args.est_shots  # 2 for grad, 2 extra for metric, 1 for blocking
+    elif args.optimizer == "qnspsa":
+        # python main.py --optimizer=qnspsa --learning_rate=0.01 --metric_reg=0.001 --stddev=0.01 --est_shots=1 --no_wandb
+        opt = qo_optim.QNSPSA(param_len=torch.numel(params), circuit=qmodel, dev=dev, stepsize=args.learning_rate, regularization=args.metric_reg, 
+                              finite_diff_step=args.stddev, num_shots=args.est_shots, blocking=True, history_length=5)
+        shot_num = 7 * args.est_shots  # 2 for grad, 4 for metric, 1 for blocking
     elif args.optimizer == "pl_qnspsa":
         # python main.py --optimizer=pl_qnspsa --learning_rate=0.01 --metric_reg=0.001 --stddev=0.01 --est_shots=1 --interface=numpy --no_wandb
         opt = qml.QNSPSAOptimizer(stepsize=args.learning_rate, regularization=args.metric_reg, finite_diff_step=args.stddev, 
@@ -158,24 +167,24 @@ def main(args=None):
     # ------------------ Problem ------------------
 
     if args.problem == "random_state":
-        q_problem = qo_problems.RandomState(qmodel.circuit, params, opt, args)
+        q_problem = qo_problems.RandomState(qmodel.circuit, params, opt, dev, args)
     elif args.problem == "transverse_ising":
         q_problem = qo_problems.HamiltonianMinimization(qmodel.circuit, params, opt, 
-                                                        qo_util.transverse_ising_hamiltonian(args.num_qubits), args)
+                                                        qo_util.transverse_ising_hamiltonian(args.num_qubits), dev, args)
     elif args.problem == "2d_heisenberg":
         q_problem = qo_problems.HamiltonianMinimization(qmodel.circuit, params, opt, 
-                                                        qo_util.heisenberg_2d_hamiltonian(args.num_qubits), args)
+                                                        qo_util.heisenberg_2d_hamiltonian(args.num_qubits), dev, args)
     elif args.problem == "randomized_hamiltonian":
         q_problem = qo_problems.HamiltonianMinimization(qmodel.circuit, params, opt, 
                                                         qo_util.randomized_hamiltonian(args.num_qubits, 
                                                                                        args.num_random_singles, 
                                                                                        args.num_random_doubles, 
                                                                                        rand_seed), 
-                                                        args)
+                                                        dev, args)
     elif args.problem == "randomized_generative":
-        q_problem = qo_problems.GenerativeNLL(qmodel.circuit, params, opt, qo_util.random_dist(args.num_qubits, rand_seed), args)
+        q_problem = qo_problems.GenerativeNLL(qmodel.circuit, params, opt, qo_util.random_dist(args.num_qubits, rand_seed), dev, args)
     elif args.problem == "cardinality_generative":
-        q_problem = qo_problems.GenerativeNLL(qmodel.circuit, params, opt, qo_util.cardinality_dist(args.num_qubits, target_num=int(args.num_qubits/2)), args)
+        q_problem = qo_problems.GenerativeNLL(qmodel.circuit, params, opt, qo_util.cardinality_dist(args.num_qubits, target_num=int(args.num_qubits/2)), dev, args)
     else:
         raise Exception("Need to give a valid problem option")
 
