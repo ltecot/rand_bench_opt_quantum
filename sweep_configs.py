@@ -848,7 +848,6 @@ sweep_configs["random_hamiltonian_snes_hs"]["name"] = 'Random Hamiltonian sNES H
 sweep_configs["random_hamiltonian_ges_hs"] = merge_dict(random_hamiltonian_hs_baseline, ges_hs)
 sweep_configs["random_hamiltonian_ges_hs"]["name"] = 'Random Hamiltonian GES Hyperparam Sweep'
 
-
 cardinality_generative_hs = {
     'parameters': 
     {
@@ -874,6 +873,34 @@ sweep_configs["cardinality_generative_snes_hs"] = merge_dict(cardinality_generat
 sweep_configs["cardinality_generative_snes_hs"]["name"] = 'Cardinality Generative sNES Hyperparam Sweep'
 sweep_configs["cardinality_generative_ges_hs"] = merge_dict(cardinality_generative_hs_baseline, ges_hs)
 sweep_configs["cardinality_generative_ges_hs"]["name"] = 'Cardinality Generative GES Hyperparam Sweep'
+
+random_generative_hs = {
+    'parameters': 
+    {
+        'num_qubits': {'value': 5},
+        'problem': {'value': 'randomized_generative'},
+        'model': {'value': 'rand_layers'},
+        'num_layers': {'value': 10},
+        'num_params': {'value': 10},
+        'ratio_imprim': {'value': 0.3},
+        'steps': {'value': 5000},
+     }
+}
+random_generative_hs_baseline = merge_dict(hs_baseline, random_generative_hs)
+sweep_configs["random_generative_spsa_hs"] = merge_dict(random_generative_hs_baseline, spsa_hs)
+sweep_configs["random_generative_spsa_hs"]["name"] = 'Random Generative SPSA Hyperparam Sweep'
+sweep_configs["random_generative_adam_spsa_hs"] = merge_dict(random_generative_hs_baseline, adam_spsa_hs)
+sweep_configs["random_generative_adam_spsa_hs"]["name"] = 'Random Generative Adam SPSA Hyperparam Sweep'
+sweep_configs["random_generative_qnspsa_hs"] = merge_dict(random_generative_hs_baseline, qnspsa_hs)
+sweep_configs["random_generative_qnspsa_hs"]["name"] = 'Random Generative QNSPSA Hyperparam Sweep'
+sweep_configs["random_generative_spsa2_hs"] = merge_dict(random_generative_hs_baseline, spsa2_hs)
+sweep_configs["random_generative_spsa2_hs"]["name"] = 'Random Generative 2-SPSA Hyperparam Sweep'
+sweep_configs["random_generative_xnes_hs"] = merge_dict(random_generative_hs_baseline, xnes_hs)
+sweep_configs["random_generative_xnes_hs"]["name"] = 'Random Generative xNES Hyperparam Sweep'
+sweep_configs["random_generative_snes_hs"] = merge_dict(random_generative_hs_baseline, snes_hs)
+sweep_configs["random_generative_snes_hs"]["name"] = 'Random Generative sNES Hyperparam Sweep'
+sweep_configs["random_generative_ges_hs"] = merge_dict(random_generative_hs_baseline, ges_hs)
+sweep_configs["random_generative_ges_hs"]["name"] = 'Random Generative GES Hyperparam Sweep'
 
 # -----------------------------------------------------------------------------------------------------------------
 # ------------------------------------------------- Custom Sweeps -------------------------------------------------
