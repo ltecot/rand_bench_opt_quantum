@@ -24,6 +24,8 @@ parser.add_argument('--device', type=str, default="lightning.qubit")  # Quantum 
 parser.add_argument('--no_wandb', action=argparse.BooleanOptionalAction)  # To turn off wandb for debug
 parser.add_argument('--wandb_sweep', action=argparse.BooleanOptionalAction)  # Instead use a wandb sweep config for the run. All options used here must be provided by the config
 parser.add_argument('--wandb_config', type=str, default="")  # Sweep config to use. Make sure a config of this name exists in sweep_configs.py
+parser.add_argument('--wandb_agent', action=argparse.BooleanOptionalAction)  # Create a new agent on an existing sweep created by this program.
+parser.add_argument('--sweep_id', type=str, default="")  # Sweep ID to use for creating a new agent.
 # ------------------------------------- Problems -------------------------------------
 parser.add_argument('--problem', type=str, default="randomized_hamiltonian")  # Type of problem to run circuit + optimizer on.
 # Randomized Hamiltonian
@@ -207,11 +209,13 @@ def main(args=None):
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    if not args.wandb_sweep:
-        main(args)
-    else:
+    if args.wandb_agent:
+        wandb.agent(args.sweep_id, function=main)
+    elif args.wandb_sweep:
         sweep_id = wandb.sweep(
             sweep=qo_sc.sweep_configs[args.wandb_config], 
             project='quantum_optimization'
         )
         wandb.agent(sweep_id, function=main)
+    else:
+        main(args)

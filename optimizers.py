@@ -76,7 +76,7 @@ class QNSPSA():
             fn2 = self.get_state_overlap(params, params - torch.reshape(self.finite_diff_step * (eps_1 - eps_2), params.shape))
             metric_est += (fp2 - fp1 - fn2 + fn1) * (torch.outer(eps_1, eps_2) + torch.outer(eps_2, eps_1))
         grad_est *= 1 / (2 * self.finite_diff_step * self.num_shots)
-        metric_est *= 1 / (8 * (self.finite_diff_step ** 2) * self.num_shots)
+        metric_est *= -1 / (8 * (self.finite_diff_step ** 2) * self.num_shots)
         self.metric_avg = 1 / (self.k + 1) * metric_est + self.k / (self.k + 1) * self.metric_avg
         # TODO: Maybe add sqrt(A^t A) below. Matrix should already be positive semi-definite and A^t = A so it seems pointless, but maybe I'm missing something.
         pos_def_metric_avg = self.metric_avg + self.regularization * torch.eye(self.param_len)
