@@ -1,5 +1,8 @@
 import util as qo_util
-print(qo_util.random_dist(5, 41))
+print(qo_util.fitness_utilities(2))
+
+# import util as qo_util
+# print(qo_util.random_dist(5, 41))
 
 # import pennylane as qml
 # from copy import copy

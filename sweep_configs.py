@@ -475,7 +475,7 @@ cardinality_generative_qnspsa_exp = {
         'interface': {'value': 'torch'},
         'optimizer': {'value': 'qnspsa'},
         'est_shots': {'value': 1},
-        'learning_rate': {'value': 0.01},
+        'learning_rate': {'value': 0.005},
         'stddev': {'value': 0.01},
         'metric_reg': {'value': 0.001},
      }
