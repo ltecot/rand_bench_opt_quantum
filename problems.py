@@ -32,6 +32,11 @@ class HamiltonianMinimization():
         # dev = qml.device(args.device, wires=args.num_qubits)
         self.qnode = qml.QNode(full_circuit, dev, interface=args.interface)
 
+    # def grad(self, params):
+    #     """Gradient function of the loss function with respect to the parameters.
+    #        Only use with pennylane numpy autograd interface."""
+    #     return qml.grad(self.qnode)(params)
+
     def step(self):
         new_params, loss = self.opt.step_and_cost(self.qnode, self.params)
         self.params = new_params
